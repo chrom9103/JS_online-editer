@@ -1,19 +1,19 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: chrom-works-deployment
+  name: js_online-editer
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: chrom-works
+      app: online-editer
   template:
     metadata:
       labels:
-        app: chrom-works
+        app: online-editer
     spec:
       containers:
-      - name: chrom-works-container
-        image: chrom-works-image:0.0.3
+      - name: online-editer-container
+        image: online-editer-image:0.0.3
         ports:
         - containerPort: 8080

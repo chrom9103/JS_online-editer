@@ -7,7 +7,7 @@ resources:
   - ingress.yaml
 
 secretGenerator:
-  - name: chrom-works-secret
+  - name: online-editer-secret
     type: kubernetes.io/tls
     files:
       - tls.crt=secrets/tls.crt

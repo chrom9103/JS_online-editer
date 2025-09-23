@@ -1,10 +1,10 @@
 apiVersion: v1
 kind: Service
 metadata:
-  name: chrom-works-service
+  name: online-editer-service
 spec:
   selector:
-    app: chrom-works
+    app: online-editer
   ports:
     - protocol: TCP
       port: 80
