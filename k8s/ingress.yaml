@@ -1,0 +1,21 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: chrom-works-ingress
+
+spec:
+  rules:
+  - host: www.chrom.jp
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: chrom-works-service
+            port:
+              number: 80
+  tls:
+  - hosts:
+    - www.chrom.jp
+    secretName: chrom-works-secret

@@ -1,0 +1,19 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: chrom-works-deployment
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: chrom-works
+  template:
+    metadata:
+      labels:
+        app: chrom-works
+    spec:
+      containers:
+      - name: chrom-works-container
+        image: chrom-works-image:0.0.3
+        ports:
+        - containerPort: 8080

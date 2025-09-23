@@ -1,0 +1,26 @@
+@import './base.css';
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+a,
+.green {
+  text-decoration: none;
+  color: hsla(160, 100%, 37%, 1);
+  transition: 0.4s;
+  padding: 3px;
+}
+
+@media (min-width: 1024px) {
+  body {
+    display: flex;
+  }
+
+  #app {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+}
