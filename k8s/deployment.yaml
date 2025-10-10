@@ -1,7 +1,7 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: js_online-editer
+  name: online-editer-deployment
 spec:
   replicas: 1
   selector:
@@ -15,5 +15,13 @@ spec:
       containers:
       - name: online-editer-container
         image: online-editer-image:v0.0.1
+        imagePullPolicy: Never
         ports:
         - containerPort: 8080
+        resources:
+          requests:
+            cpu: "100m"
+            memory: "128Mi"
+          limits:
+            cpu: "200m"
+            memory: "1024Mi"

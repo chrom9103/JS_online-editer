@@ -2,20 +2,20 @@ apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
   name: online-editer-ingress
-
 spec:
+  ingressClassName: public
   rules:
-  - host: www.chrom.jp
-    http:
-      paths:
-      - path: /
-        pathType: Prefix
-        backend:
-          service:
-            name: online-editer-service
-            port:
-              number: 80
+    - host: www.chrom.jp
+      http:
+        paths:
+          - path: /works/playground
+            pathType: Prefix
+            backend:
+              service:
+                name: online-editer-service
+                port:
+                  number: 8080
   tls:
-  - hosts:
-    - www.chrom.jp
-    secretName: online-editer-secret
+    - hosts:
+        - www.chrom.jp
+      secretName: online-editer-secret
