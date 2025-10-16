@@ -1,5 +1,5 @@
 <template>
-  <div class="container">
+  <div class="container" :style="{ gridTemplateColumns: `50px ${sidebarWidth}px 6px 1fr` }">
     <div class="activity-bar">
       <div class="activity-icon-group">
         <button @click="switchSidebar('explorer')" class="activity-icon-item" :class="{ active: sidebarState.explorer }" title="エクスプローラー">
@@ -77,6 +77,8 @@
       </div>
     </div>
 
+    <div class="divider" @mousedown.prevent="startResize"></div>
+
     <div class="main-editor-area">
       <div class="editor-header">
         <div class="tab-container">
@@ -117,7 +119,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, watch, nextTick } from 'vue';
+import { ref, onMounted, watch, nextTick, onUnmounted } from 'vue';
 import * as monaco from 'monaco-editor';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -146,6 +148,44 @@ const sidebarState = ref({
   runcode: false,
   git: false,
 });
+
+const sidebarWidth = ref(250);
+const minSidebarWidth = 158;
+const maxSidebarWidth = 600;
+let isResizing = false;
+
+const startResize = (event: MouseEvent) => {
+  if (event.button !== 0) return;
+  isResizing = true;
+  document.body.style.userSelect = 'none';
+  document.body.style.cursor = 'col-resize';
+  window.addEventListener('mousemove', onDragging);
+  window.addEventListener('mouseup', stopResize);
+};
+
+const onDragging = (event: MouseEvent) => {
+  if (!isResizing) return;
+  const pageX = event.pageX;
+  let newWidth = pageX - 0 - 50;
+  if (newWidth < minSidebarWidth) newWidth = minSidebarWidth;
+  if (newWidth > maxSidebarWidth) newWidth = maxSidebarWidth;
+  sidebarWidth.value = newWidth;
+};
+
+const stopResize = () => {
+  if (!isResizing) return;
+  isResizing = false;
+  document.body.style.userSelect = '';
+  document.body.style.cursor = '';
+  window.removeEventListener('mousemove', onDragging);
+  window.removeEventListener('mouseup', stopResize);
+};
+
+onUnmounted(() => {
+  window.removeEventListener('mousemove', onDragging);
+  window.removeEventListener('mouseup', stopResize);
+});
+
 
 // サイドバーを切り替える関数
 const switchSidebar = (view: 'explorer' | 'search' | 'runcode' | 'git') => {
@@ -201,7 +241,7 @@ watch(terminalOutput, () => {
 
 const runCode = () => {
   const originalLog = console.log;
-  
+
   terminalOutput.value.push({ text: `> Running ${new Date().toLocaleTimeString()}`, type: 'info' });
 
   console.log = (...args) => {
@@ -310,7 +350,6 @@ html, body {
 
 .container {
   display: grid;
-  grid-template-columns: 50px 250px 1fr;
   grid-template-rows: 1fr;
   width: 100vw;
   height: 100vh;
@@ -500,8 +539,22 @@ html, body {
   color: #e44f50;
 }
 
-.main-editor-area {
+.divider {
   grid-column: 3;
+  width: 6px;
+  background: transparent;
+  cursor: col-resize;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  user-select: none;
+  transition: background-color 0.08s;
+}
+.divider:hover {
+  background: rgba(112,129,144,0.25);
+}
+
+.main-editor-area {
+  grid-column: 4;
   background-color: #1e1e1e;
   display: flex;
   flex-direction: column;
