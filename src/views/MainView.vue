@@ -215,6 +215,15 @@ watch(activeFileId, (newFileId, oldFileId) => {
 });
 
 onMounted(() => {
+  (window as any).MonacoEnvironment = {
+    getWorkerUrl: function (_moduleId: string, label: string) {
+      if (label === 'typescript' || label === 'javascript') {
+        return new URL('monaco-editor/esm/vs/language/typescript/ts.worker.js', import.meta.url).toString();
+      }
+      return new URL('monaco-editor/esm/vs/editor/editor.worker.js', import.meta.url).toString();
+    }
+  };
+
   monacoEditor = monaco.editor.create(document.getElementById('editor-container')!, {
     value: code.value,
     language: 'javascript',
