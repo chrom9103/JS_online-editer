@@ -152,6 +152,31 @@ const handleUpdateFileContent = ({ id, content }: { id: string; content: string 
   const f = files.value.find(x => x.id === id);
   if (f) f.content = content;
 };
+
+// コード実行（サイドバーからの呼び出し用）
+const runCode = async () => {
+  const file = files.value.find(f => f.id === activeFileId.value);
+  if (!file) return;
+  
+  // EditorAreaのrunCode機能と重複するが、サイドバーからも実行できるようにする
+  alert('コードを実行するには、エディタ上部の実行ボタン（▷）を使用してください。');
+};
+
+// コードダウンロード
+const downloadCode = () => {
+  const file = files.value.find(f => f.id === activeFileId.value);
+  if (!file) return;
+  
+  const blob = new Blob([file.content], { type: 'text/javascript' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = file.name;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+};
 </script>
 
 <style>

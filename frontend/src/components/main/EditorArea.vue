@@ -88,26 +88,61 @@ watch(() => props.files, () => {
   });
 }, { deep: true });
 
-const runCode = () => {
+// API実行中フラグ
+const isExecuting = ref(false);
+
+// APIのベースURL（環境変数または相対パス）
+const getApiBaseUrl = () => {
+  // 本番環境では同一ドメインのAPIを使用
+  if (import.meta.env.PROD) {
+    return '/api';
+  }
+  // 開発環境ではローカルのバックエンドを使用
+  return import.meta.env.VITE_API_URL || 'http://localhost:8081/api';
+};
+
+const runCode = async () => {
   const file = getActiveFile();
   if (!file) return;
-  const originalLog = console.log;
+  
+  if (isExecuting.value) {
+    terminalOutput.value.push({ text: 'Already executing...', type: 'warn' });
+    return;
+  }
+
+  isExecuting.value = true;
   terminalOutput.value.push({ text: `> Running ${new Date().toLocaleTimeString()}`, type: 'info' });
 
-  console.log = (...args: any[]) => {
-    const message = args.map(arg => typeof arg === 'object' ? JSON.stringify(arg) : String(arg)).join(' ');
-    terminalOutput.value.push({ text: message, type: 'log' });
-  };
-
   try {
-    const result = eval(file.content);
-    if (result !== undefined) {
-      terminalOutput.value.push({ text: `=> ${typeof result === 'object' ? JSON.stringify(result) : String(result)}`, type: 'log' });
+    const response = await fetch(`${getApiBaseUrl()}/execute`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        code: file.content,
+        language: 'javascript',
+      }),
+    });
+
+    const result = await response.json();
+
+    if (result.output && Array.isArray(result.output)) {
+      result.output.forEach((item: { type: string; text: string }) => {
+        terminalOutput.value.push({ text: item.text, type: item.type });
+      });
+    }
+
+    if (!result.success && result.error) {
+      terminalOutput.value.push({ text: `Error: ${result.error}`, type: 'error' });
     }
   } catch (e: any) {
-    terminalOutput.value.push({ text: `Error: ${e.toString()}`, type: 'error' });
+    terminalOutput.value.push({ text: `Network Error: ${e.message || 'Failed to connect to server'}`, type: 'error' });
   } finally {
-    console.log = originalLog;
+    isExecuting.value = false;
+    nextTick(() => {
+      if (terminalContainer.value) terminalContainer.value.scrollTop = terminalContainer.value.scrollHeight;
+    });
   }
 };
 
