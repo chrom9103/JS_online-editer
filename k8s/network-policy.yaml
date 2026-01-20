@@ -1,0 +1,86 @@
+# サンドボックスPodのネットワーク分離
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: sandbox-network-policy
+spec:
+  podSelector:
+    matchLabels:
+      app: sandbox
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    # バックエンドからのリクエストのみ許可
+    - from:
+        - podSelector:
+            matchLabels:
+              app: backend
+      ports:
+        - protocol: TCP
+          port: 3000
+  egress:
+    # DNS解決のみ許可（必要最小限）
+    - to:
+        - namespaceSelector: {}
+          podSelector:
+            matchLabels:
+              k8s-app: kube-dns
+      ports:
+        - protocol: UDP
+          port: 53
+---
+# バックエンドのネットワークポリシー
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: backend-network-policy
+spec:
+  podSelector:
+    matchLabels:
+      app: backend
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    # Ingressコントローラーからのアクセスを許可
+    - from: []
+      ports:
+        - protocol: TCP
+          port: 8081
+  egress:
+    # サンドボックスサービスへのアクセスを許可
+    - to:
+        - podSelector:
+            matchLabels:
+              app: sandbox
+      ports:
+        - protocol: TCP
+          port: 3000
+    # DNS解決を許可
+    - to:
+        - namespaceSelector: {}
+          podSelector:
+            matchLabels:
+              k8s-app: kube-dns
+      ports:
+        - protocol: UDP
+          port: 53
+---
+# フロントエンドのネットワークポリシー
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: frontend-network-policy
+spec:
+  podSelector:
+    matchLabels:
+      app: frontend
+  policyTypes:
+    - Ingress
+  ingress:
+    # 外部からのHTTPアクセスを許可
+    - from: []
+      ports:
+        - protocol: TCP
+          port: 8080

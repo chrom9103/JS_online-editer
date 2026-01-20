@@ -1,20 +1,20 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: online-editer-deployment
+  name: online-editer-frontend-deployment
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: online-editer
+      app: frontend
   template:
     metadata:
       labels:
-        app: online-editer
+        app: frontend
     spec:
       containers:
-      - name: online-editer-container
-        image: online-editer-image:v0.0.1
+      - name: frontend-container
+        image: online-editer-frontend:v0.0.1
         imagePullPolicy: Never
         ports:
         - containerPort: 8080
@@ -24,4 +24,100 @@ spec:
             memory: "128Mi"
           limits:
             cpu: "200m"
-            memory: "1024Mi"
+            memory: "256Mi"
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: online-editer-backend-deployment
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: backend
+  template:
+    metadata:
+      labels:
+        app: backend
+    spec:
+      containers:
+      - name: backend-container
+        image: online-editer-backend:v0.0.1
+        imagePullPolicy: Never
+        ports:
+        - containerPort: 8081
+        env:
+        - name: SANDBOX_SERVICE_URL
+          value: "http://localhost:3000"
+        - name: PORT
+          value: "8081"
+        resources:
+          requests:
+            cpu: "100m"
+            memory: "128Mi"
+          limits:
+            cpu: "500m"
+            memory: "256Mi"
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8081
+          initialDelaySeconds: 5
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8081
+          initialDelaySeconds: 5
+          periodSeconds: 5
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: online-editer-sandbox-deployment
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: sandbox
+  template:
+    metadata:
+      labels:
+        app: sandbox
+    spec:
+      containers:
+      - name: sandbox-container
+        image: online-editer-sandbox:v0.0.1
+        imagePullPolicy: Never
+        ports:
+        - containerPort: 3000
+        env:
+        - name: PORT
+          value: "3000"
+        resources:
+          requests:
+            cpu: "200m"
+            memory: "128Mi"
+          limits:
+            cpu: "500m"
+            memory: "256Mi"
+        securityContext:
+          readOnlyRootFilesystem: true
+          runAsNonRoot: true
+          runAsUser: 1000
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+              - ALL
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 3000
+          initialDelaySeconds: 10
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 3000
+          initialDelaySeconds: 5
+          periodSeconds: 5
