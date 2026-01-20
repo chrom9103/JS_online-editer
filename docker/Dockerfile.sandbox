@@ -1,0 +1,31 @@
+# Build stage
+FROM node:20-alpine AS builder
+
+RUN apk add --no-cache python3 make g++ 
+
+WORKDIR /app
+
+COPY sandbox/package*.json ./
+
+RUN npm install --production
+
+COPY sandbox/ .
+
+# Runtime stage
+FROM node:20-alpine
+
+RUN apk add --no-cache libstdc++
+
+WORKDIR /app
+
+RUN adduser -D -u 1000 sandbox
+
+COPY --from=builder --chown=sandbox:sandbox /app/node_modules ./node_modules
+COPY --from=builder --chown=sandbox:sandbox /app/src ./src
+COPY --from=builder --chown=sandbox:sandbox /app/package.json ./
+
+USER sandbox
+
+EXPOSE 3000
+
+CMD ["node", "src/index.js"]

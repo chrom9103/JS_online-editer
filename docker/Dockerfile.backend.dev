@@ -1,0 +1,17 @@
+FROM golang:1.24-alpine
+
+# ホットリロード用のairをインストール
+RUN go install github.com/air-verse/air@v1.61.0
+
+WORKDIR /app
+
+COPY backend/go.mod backend/go.sum ./
+
+RUN go mod download
+
+COPY backend/ .
+
+EXPOSE 8081
+
+# airでホットリロード
+CMD ["air", "-c", ".air.toml"]
