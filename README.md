@@ -1,39 +1,119 @@
-# JS_online-editer
+# JS Online Editor
 
-This template should help get you started developing with Vue 3 in Vite.
+ブラウザ上でJavaScriptコードを編集・実行できるオンラインエディタです。
 
-## Recommended IDE Setup
+## アーキテクチャ
 
-[VSCode](https://code.visualstudio.com/) + [Volar](https://marketplace.visualstudio.com/items?itemName=Vue.volar) (and disable Vetur).
+```
+┌─────────────────┐        ┌──────────────────┐        ┌─────────────────────────┐
+│   Frontend      │  HTTP  │   Backend        │  HTTP  │   Sandbox               │
+│   (Vue.js)      │ ────▶  │   (Go/Gin)       │ ────▶  │   (Node.js/isolated-vm) │
+│                 │ ◀────  │                  │ ◀────  │                         │
+│   - Monaco Editor        │   - APIサーバー   │        │   - 隔離されたJS実行     │
+│   - UI                   │   - リクエスト転送│        │   - メモリ制限128MB      │
+└─────────────────┘        └──────────────────┘        │   - タイムアウト10秒     │
+                                                       └─────────────────────────┘
+```
 
-## Type Support for `.vue` Imports in TS
+## セキュリティ
 
-TypeScript cannot handle type information for `.vue` imports by default, so we replace the `tsc` CLI with `vue-tsc` for type checking. In editors, we need [Volar](https://marketplace.visualstudio.com/items?itemName=Vue.volar) to make the TypeScript language service aware of `.vue` types.
+- **isolated-vm**: V8エンジンの隔離されたコンテキストでユーザーコードを実行
+- **NetworkPolicy**: サンドボックスPodは外部ネットワークへのアクセスを禁止
+- **リソース制限**: メモリ128MB、タイムアウト10秒
+- **非rootユーザー**: すべてのコンテナは非rootユーザーで実行
 
-## Customize configuration
+## ディレクトリ構成
 
-See [Vite Configuration Reference](https://vite.dev/config/).
+```
+.
+├── frontend/           # フロントエンド (Vue.js)
+│   ├── src/
+│   ├── package.json
+│   └── ...
+├── backend/            # バックエンド (Go)
+│   ├── main.go
+│   ├── handlers/
+│   └── go.mod
+├── sandbox/            # サンドボックス (Node.js)
+│   ├── src/
+│   └── package.json
+├── docker/             # Dockerfiles
+│   ├── Dockerfile.frontend
+│   ├── Dockerfile.backend
+│   ├── Dockerfile.sandbox
+│   └── build-all.sh
+└── k8s/                # Kubernetes設定
+    ├── deployment.yaml
+    ├── service.yaml
+    ├── ingress.yaml
+    ├── hpa.yaml
+    ├── network-policy.yaml
+    └── kustomization.yaml
+```
 
-## Project Setup
+## 開発
 
-```sh
+### ローカル開発
+
+```bash
+# フロントエンド
+cd frontend
 npm install
-```
-
-### Compile and Hot-Reload for Development
-
-```sh
 npm run dev
+
+# バックエンド
+cd backend
+go run main.go
+
+# サンドボックス
+cd sandbox
+npm install
+npm start
 ```
 
-### Type-Check, Compile and Minify for Production
+### Dockerビルド
 
-```sh
-npm run build
+```bash
+# すべてのイメージをビルド
+./docker/build-all.sh v0.0.1
 ```
 
-### Lint with [ESLint](https://eslint.org/)
+### Kubernetesデプロイ
 
-```sh
-npm run lint
+```bash
+# kustomizeでデプロイ
+kubectl apply -k k8s/
 ```
+
+## API
+
+### POST /api/execute
+
+JavaScriptコードを実行します。
+
+**Request:**
+```json
+{
+  "code": "console.log('Hello, World!');",
+  "language": "javascript"
+}
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "output": [
+    { "type": "log", "text": "Hello, World!" }
+  ]
+}
+```
+
+## 環境変数
+
+### Backend
+- `PORT`: APIサーバーのポート (default: 8081)
+- `SANDBOX_SERVICE_URL`: サンドボックスサービスのURL (default: http://sandbox-service:3000)
+
+### Sandbox
+- `PORT`: サンドボックスサービスのポート (default: 3000)

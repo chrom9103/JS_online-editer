@@ -1,0 +1,46 @@
+services:
+  # フロントエンド（開発モード）
+  frontend:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.frontend.dev
+    ports:
+      - "5173:5173"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    environment:
+      - VITE_API_URL=http://localhost:8081/api
+    depends_on:
+      - backend
+
+  # バックエンド（Go API）
+  backend:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.backend.dev
+    ports:
+      - "8081:8081"
+    volumes:
+      - ./backend:/app
+    environment:
+      - PORT=8081
+      - SANDBOX_SERVICE_URL=http://sandbox:3000
+    depends_on:
+      - sandbox
+
+  # サンドボックス（隔離コード実行）
+  sandbox:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.sandbox.dev
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./sandbox/src:/app/src
+    environment:
+      - PORT=3000
+
+networks:
+  default:
+    name: online-editer-network
