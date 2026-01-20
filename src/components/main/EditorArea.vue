@@ -28,7 +28,6 @@
 <script setup lang="ts">
 import { ref, onMounted, watch, nextTick, onUnmounted } from 'vue';
 import * as monaco from 'monaco-editor';
-import { PropType } from 'vue';
 
 const props = defineProps<{
   files: Array<{ id: string; name: string; content: string }>;

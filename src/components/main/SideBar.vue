@@ -28,7 +28,6 @@
 </template>
 
 <script setup lang="ts">
-import { defineProps } from 'vue';
 import FileExplorer from './FileExplorer.vue';
 
 const props = defineProps<{

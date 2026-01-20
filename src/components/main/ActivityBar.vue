@@ -26,6 +26,5 @@
 </template>
 
 <script setup lang="ts">
-import { defineProps } from 'vue';
 const props = defineProps<{ active: string }>();
 </script>

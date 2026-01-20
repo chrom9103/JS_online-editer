@@ -32,8 +32,6 @@
 </template>
 
 <script setup lang="ts">
-import { defineProps } from 'vue';
-
 const props = defineProps<{
   files: Array<{ id: string; name: string; content: string }>;
   activeFileId: string;
