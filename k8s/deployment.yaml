@@ -31,7 +31,7 @@ kind: Deployment
 metadata:
   name: online-editer-backend-deployment
 spec:
-  replicas: 2
+  replicas: 1
   selector:
     matchLabels:
       app: backend
@@ -76,7 +76,7 @@ kind: Deployment
 metadata:
   name: online-editer-sandbox-deployment
 spec:
-  replicas: 3
+  replicas: 1
   selector:
     matchLabels:
       app: sandbox
