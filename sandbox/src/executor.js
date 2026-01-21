@@ -14,8 +14,11 @@ async function executeCode(code, timeout = 10000) {
   let isolate = null;
   let context = null;
 
+  console.log(`[Sandbox] Creating new Isolate for execution...`);
+
   try {
     isolate = new ivm.Isolate({ memoryLimit: MEMORY_LIMIT_MB });
+    console.log(`[Sandbox] Isolate created (memory limit: ${MEMORY_LIMIT_MB}MB)`);
     
     context = await isolate.createContext();
     
@@ -129,9 +132,11 @@ async function executeCode(code, timeout = 10000) {
   } finally {
     if (context) {
       context.release();
+      console.log(`[Sandbox] Context released`);
     }
     if (isolate) {
       isolate.dispose();
+      console.log(`[Sandbox] Isolate disposed - cleanup complete`);
     }
   }
 }
