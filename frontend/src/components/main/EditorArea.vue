@@ -28,6 +28,17 @@
 <script setup lang="ts">
 import { ref, onMounted, watch, nextTick, onUnmounted } from 'vue';
 import * as monaco from 'monaco-editor';
+import editorWorker from 'monaco-editor/esm/vs/editor/editor.worker?worker';
+import tsWorker from 'monaco-editor/esm/vs/language/typescript/ts.worker?worker';
+
+self.MonacoEnvironment = {
+  getWorker(_: unknown, label: string) {
+    if (label === 'typescript' || label === 'javascript') {
+      return new tsWorker();
+    }
+    return new editorWorker();
+  },
+};
 
 const props = defineProps<{
   files: Array<{ id: string; name: string; content: string }>;
@@ -44,15 +55,6 @@ const terminalOutput = ref<{ text: string; type: string }[]>([]);
 const getActiveFile = () => props.files.find(f => f.id === props.activeFileId);
 
 onMounted(() => {
-  (window as any).MonacoEnvironment = {
-    getWorkerUrl: function (_moduleId: string, label: string) {
-      if (label === 'typescript' || label === 'javascript') {
-        return new URL('monaco-editor/esm/vs/language/typescript/ts.worker.js', import.meta.url).toString();
-      }
-      return new URL('monaco-editor/esm/vs/editor/editor.worker.js', import.meta.url).toString();
-    }
-  };
-
   monacoEditor = monaco.editor.create(editorContainer.value!, {
     value: getActiveFile()?.content ?? '',
     language: 'javascript',
@@ -93,12 +95,12 @@ const isExecuting = ref(false);
 
 // APIのベースURL（環境変数または相対パス）
 const getApiBaseUrl = () => {
-  // 本番環境では同一ドメインのAPIを使用
+  // 本番環境では /playground/api を使用
   if (import.meta.env.PROD) {
-    return '/api';
+    return '/playground/api';
   }
-  // 開発環境ではローカルのバックエンドを使用
-  return import.meta.env.VITE_API_URL || 'http://localhost:8081/api';
+  // 開発環境ではローカルのバックエンド
+  return '/api';
 };
 
 const runCode = async () => {

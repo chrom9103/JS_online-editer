@@ -11,6 +11,18 @@ export default defineConfig({
     vueDevTools(),
   ],
   base: '/playground/',
+  optimizeDeps: {
+    include: ['monaco-editor'],
+  },
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          'monaco-editor': ['monaco-editor'],
+        },
+      },
+    },
+  },
   server: {
     host: '0.0.0.0',
     port: 5173,
