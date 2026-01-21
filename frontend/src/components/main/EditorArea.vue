@@ -31,6 +31,7 @@ import * as monaco from 'monaco-editor';
 import editorWorker from 'monaco-editor/esm/vs/editor/editor.worker?worker';
 import tsWorker from 'monaco-editor/esm/vs/language/typescript/ts.worker?worker';
 
+// Workerのベースパスを明示的に設定
 self.MonacoEnvironment = {
   getWorker(_: unknown, label: string) {
     if (label === 'typescript' || label === 'javascript') {
@@ -38,6 +39,8 @@ self.MonacoEnvironment = {
     }
     return new editorWorker();
   },
+  // 本番環境でのworkerパス解決用
+  baseUrl: import.meta.env.BASE_URL,
 };
 
 const props = defineProps<{

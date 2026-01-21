@@ -48,7 +48,7 @@ spec:
         - containerPort: 8081
         env:
         - name: SANDBOX_SERVICE_URL
-          value: "http://localhost:3000"
+          value: "http://sandbox-service:3000"
         - name: PORT
           value: "8081"
         resources:

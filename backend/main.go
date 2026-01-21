@@ -25,7 +25,7 @@ func main() {
 	})
 
 	// コード実行エンドポイント
-	r.POST("/api/execute", handlers.ExecuteCode)
+	r.POST("/execute", handlers.ExecuteCode)
 
 	port := os.Getenv("PORT")
 	if port == "" {
