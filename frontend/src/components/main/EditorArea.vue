@@ -54,10 +54,31 @@ let monacoEditor: monaco.editor.IStandaloneCodeEditor | null = null;
 const editorContainer = ref<HTMLElement | null>(null);
 const terminalContainer = ref<HTMLElement | null>(null);
 const terminalOutput = ref<{ text: string; type: string }[]>([]);
+const clientId = ref<string>('');
 
 const getActiveFile = () => props.files.find(f => f.id === props.activeFileId);
 
 onMounted(() => {
+  // ClientIDをlocalStorageから読み出し、なければ生成して保存
+  try {
+    const stored = localStorage.getItem('clientId');
+    if (stored) {
+      clientId.value = stored;
+    } else if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+      const id = crypto.randomUUID();
+      localStorage.setItem('clientId', id);
+      clientId.value = id;
+    } else {
+      // フォールバック: 簡易ランダム文字列
+      const id = 'id-' + Math.random().toString(36).slice(2, 10);
+      localStorage.setItem('clientId', id);
+      clientId.value = id;
+    }
+  } catch (e) {
+    // localStorageが使えない場合は空のままにする
+    clientId.value = '';
+  }
+
   monacoEditor = monaco.editor.create(editorContainer.value!, {
     value: getActiveFile()?.content ?? '',
     language: 'javascript',
@@ -127,6 +148,7 @@ const runCode = async () => {
       body: JSON.stringify({
         code: file.content,
         language: 'javascript',
+        clientId: clientId.value,
       }),
     });
 
