@@ -19,6 +19,7 @@
     <div class="divider" @mousedown.prevent="startResize"></div>
 
     <EditorArea
+      ref="editorAreaRef"
       :files="files"
       :activeFileId="activeFileId"
       @open-file="switchFile"
@@ -37,6 +38,8 @@ import ActivityBar from '../components/main/ActivityBar.vue';
 import SideBar from '../components/main/SideBar.vue';
 import EditorArea from '../components/main/EditorArea.vue';
 import ConfirmPopup from '../components/main/ConfirmPopup.vue';
+
+const editorAreaRef = ref<InstanceType<typeof EditorArea> | null>(null);
 
 const files = ref([
   {
@@ -154,12 +157,10 @@ const handleUpdateFileContent = ({ id, content }: { id: string; content: string 
 };
 
 // コード実行（サイドバーからの呼び出し用）
-const runCode = async () => {
-  const file = files.value.find(f => f.id === activeFileId.value);
-  if (!file) return;
-  
-  // EditorAreaのrunCode機能と重複するが、サイドバーからも実行できるようにする
-  alert('コードを実行するには、エディタ上部の実行ボタン（▷）を使用してください。');
+const runCode = () => {
+  if (editorAreaRef.value) {
+    editorAreaRef.value.runCode();
+  }
 };
 
 // コードダウンロード

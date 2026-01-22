@@ -151,4 +151,6 @@ const runCode = async () => {
   }
 };
 
+defineExpose({ runCode });
+
 </script>
