@@ -45,9 +45,20 @@ type SandboxResponse struct {
 	Error   string   `json:"error,omitempty"`
 }
 
-// saveRunToFile saves the code to a file under ./tmp/runs
+// saveRunToFile saves the code to a file under RUNS_DIR (or ./tmp/runs relative to WORKDIR)
 func saveRunToFile(code string, clientID string, ipHash string) error {
-	dir := "./tmp/runs"
+	dir := os.Getenv("RUNS_DIR")
+	if dir == "" {
+		dir = "./tmp/runs"
+	}
+
+	if !filepath.IsAbs(dir) {
+		cwd, err := os.Getwd()
+		if err == nil {
+			dir = filepath.Join(cwd, dir)
+		}
+	}
+
 	if err := os.MkdirAll(dir, 0755); err != nil {
 		return err
 	}

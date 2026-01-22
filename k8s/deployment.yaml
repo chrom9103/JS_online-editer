@@ -14,7 +14,7 @@ spec:
     spec:
       containers:
       - name: frontend-container
-        image: online-editer-frontend:v0.0.1
+        image: online-editer-frontend:v0.0.3
         imagePullPolicy: Never
         ports:
         - containerPort: 8080
@@ -40,16 +40,33 @@ spec:
       labels:
         app: backend
     spec:
+      securityContext:
+        fsGroup: 1000
+      initContainers:
+      - name: init-chown-runs
+        image: alpine:3.18
+        command:
+        - sh
+        - -c
+        - |
+          mkdir -p /app/tmp/runs && chown -R 1000:1000 /app/tmp
+        volumeMounts:
+        - name: runs-storage
+          mountPath: /app/tmp
+
       containers:
       - name: backend-container
-        image: online-editer-backend:v0.0.1
+        image: online-editer-backend:v0.0.3
         imagePullPolicy: Never
+        workingDir: /app
         ports:
         - containerPort: 8081
         volumeMounts:
         - name: runs-storage
-          mountPath: /root/tmp/runs
+          mountPath: /app/tmp
         env:
+        - name: RUNS_DIR
+          value: "/app/tmp/runs"
         - name: SANDBOX_SERVICE_URL
           value: "http://sandbox-service:3000"
         - name: PORT
@@ -94,7 +111,7 @@ spec:
     spec:
       containers:
       - name: sandbox-container
-        image: online-editer-sandbox:v0.0.1
+        image: online-editer-sandbox:v0.0.3
         imagePullPolicy: Never
         ports:
         - containerPort: 3000
