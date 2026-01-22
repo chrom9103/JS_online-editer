@@ -46,6 +46,9 @@ spec:
         imagePullPolicy: Never
         ports:
         - containerPort: 8081
+        volumeMounts:
+        - name: runs-storage
+          mountPath: /root/tmp/runs
         env:
         - name: SANDBOX_SERVICE_URL
           value: "http://sandbox-service:3000"
@@ -70,6 +73,10 @@ spec:
             port: 8081
           initialDelaySeconds: 5
           periodSeconds: 5
+      volumes:
+      - name: runs-storage
+        persistentVolumeClaim:
+          claimName: runs-pvc
 ---
 apiVersion: apps/v1
 kind: Deployment
