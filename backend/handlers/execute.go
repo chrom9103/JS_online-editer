@@ -107,7 +107,7 @@ func saveRunToFile(code string, clientID string, ipHash string) error {
 
 	jst = time.FixedZone("JST", 9*60*60)
 	header := fmt.Sprintf("// ClientID: %s\n// IPHash: %s\n// Start: %s\n\n", clientID, ipHash, time.Now().In(jst).Format(time.RFC3339))
-	if _, err := f.WriteString(header + code); err != nil {
+	if _, err := f.WriteString(header + code + "\n"); err != nil {
 		return err
 	}
 
