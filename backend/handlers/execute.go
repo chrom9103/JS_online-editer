@@ -7,11 +7,13 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"math/big"
 	"net/http"
 	"os"
 	"path/filepath"
 	"regexp"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -63,9 +65,10 @@ func saveRunToFile(code string, clientID string, ipHash string) error {
 		return err
 	}
 
-	// サニタイズ: ファイル名に使えるように clientID の非英数字を '_' に置換
-	sanitizeRe := regexp.MustCompile(`[^A-Za-z0-9_-]`)
-	safeID := sanitizeRe.ReplaceAllString(clientID, "_")
+	// ID を生成: clientID(16進数)をbase-61 (1-9,a-z,A-Z) に変換する
+	sum := sha256.Sum256([]byte(clientID))
+	hexStr := hex.EncodeToString(sum[:])
+	id := hexToAlphaID(hexStr, 8)
 
 	entries, err := os.ReadDir(dir)
 	if err != nil {
@@ -73,12 +76,12 @@ func saveRunToFile(code string, clientID string, ipHash string) error {
 	}
 
 	max := int64(-1)
-	// ファイル名形式: run-<safeID>-<4hex>.js
-	re := regexp.MustCompile(`^run-` + regexp.QuoteMeta(safeID) + `-([0-9a-fA-F]{4})\.js$`)
+	// ファイル名形式: <ID>-<4hex>-<time>.js
+	re := regexp.MustCompile(`^` + regexp.QuoteMeta(id) + `-([0-9a-fA-F]{4})-([0-9]{8})\.js$`)
 	for _, e := range entries {
 		name := e.Name()
 		m := re.FindStringSubmatch(name)
-		if len(m) == 2 {
+		if len(m) >= 2 {
 			if n, err := strconv.ParseInt(m[1], 16, 64); err == nil {
 				if n > max {
 					max = n
@@ -91,7 +94,9 @@ func saveRunToFile(code string, clientID string, ipHash string) error {
 	if next < 0 {
 		next = 0
 	}
-	filename := fmt.Sprintf("run-%s-%04x.js", safeID, next)
+	jst := time.FixedZone("JST", 9*60*60)
+	timeStr := time.Now().In(jst).Format("01021504") // MMDDhhmm
+	filename := fmt.Sprintf("%s-%04x-%s.js", id, next, timeStr)
 	full := filepath.Join(dir, filename)
 
 	f, err := os.Create(full)
@@ -100,13 +105,41 @@ func saveRunToFile(code string, clientID string, ipHash string) error {
 	}
 	defer f.Close()
 
-	jst := time.FixedZone("JST", 9*60*60)
+	jst = time.FixedZone("JST", 9*60*60)
 	header := fmt.Sprintf("// ClientID: %s\n// IPHash: %s\n// Start: %s\n\n", clientID, ipHash, time.Now().In(jst).Format(time.RFC3339))
 	if _, err := f.WriteString(header + code); err != nil {
 		return err
 	}
 
 	return nil
+}
+
+func hexToAlphaID(hexStr string, length int) string {
+	n := new(big.Int)
+	n.SetString(hexStr, 16)
+
+	alphabet := "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
+	base := big.NewInt(int64(len(alphabet)))
+	if n.Sign() == 0 {
+		return strings.Repeat(string(alphabet[0]), length)
+	}
+
+	var chars []byte
+	mod := new(big.Int)
+	for n.Sign() > 0 {
+		n.DivMod(n, base, mod)
+		chars = append(chars, alphabet[mod.Int64()])
+	}
+
+	for len(chars) < length {
+		chars = append(chars, alphabet[0])
+	}
+
+	for i, j := 0, len(chars)-1; i < j; i, j = i+1, j-1 {
+		chars[i], chars[j] = chars[j], chars[i]
+	}
+
+	return string(chars[:length])
 }
 
 func ExecuteCode(c *gin.Context) {
