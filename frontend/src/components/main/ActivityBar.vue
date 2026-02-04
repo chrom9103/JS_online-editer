@@ -10,6 +10,14 @@
         <img :src="explorer" class="icon" alt="エクスプローラー" />
       </button>
       <button
+        @click="$emit('switch', 'text')"
+        class="activity-icon-item"
+        :class="{ active: active === 'text' }"
+        title="テキスト"
+      >
+        <img :src="text" class="icon" alt="テキスト" />
+      </button>
+      <button
         @click="$emit('switch', 'search')"
         class="activity-icon-item"
         :class="{ active: active === 'search' }"
@@ -41,6 +49,7 @@
 const props = defineProps<{ active: string }>()
 
 const explorer = new URL('/src/assets/ActivityBar/explorer-icon.svg', import.meta.url).href
+const text = new URL('/src/assets/ActivityBar/text-icon.svg', import.meta.url).href
 const search = new URL('/src/assets/ActivityBar/search-icon.svg', import.meta.url).href
 const git = new URL('/src/assets/ActivityBar/git-icon.svg', import.meta.url).href
 const runcode = new URL('/src/assets/ActivityBar/runcode-icon.svg', import.meta.url).href

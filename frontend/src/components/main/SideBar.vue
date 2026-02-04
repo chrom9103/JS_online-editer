@@ -9,6 +9,11 @@
       @request-delete="$emit('request-delete', $event)"
     />
 
+    <div v-else-if="sidebarState.text" class="sidebar-content">
+      <h3>テキスト</h3>
+      <p>この機能は現在開発中です。</p>
+    </div>
+
     <div v-else-if="sidebarState.search" class="sidebar-content">
       <h3>検索</h3>
       <p>この機能は現在開発中です。</p>
@@ -31,7 +36,7 @@
 import FileExplorer from './FileExplorer.vue';
 
 const props = defineProps<{
-  sidebarState: { explorer: boolean; search: boolean; runcode: boolean; git: boolean };
+  sidebarState: { explorer: boolean; text: boolean; search: boolean; runcode: boolean; git: boolean };
   files: Array<{ id: string; name: string; content: string }>;
   activeFileId: string;
   editingFileId: string | null;
