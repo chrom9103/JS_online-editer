@@ -107,7 +107,7 @@ onUnmounted(() => {
 });
 
 const switchSidebar = (view: 'explorer' | 'search' | 'runcode' | 'git') => {
-  sidebarState.value = { explorer: false, search: false, runcode: false, git: false };
+  sidebarState.value = { explorer: false, text: false, search: false, runcode: false, git: false };
   (sidebarState.value as any)[view] = true;
   activeSidebar.value = view;
 };
