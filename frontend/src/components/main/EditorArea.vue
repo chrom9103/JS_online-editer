@@ -70,9 +70,22 @@ const terminalOutput = ref<{ text: string; type: string }[]>([]);
 const clientId = ref<string>('');
 
 const editorHeight = ref<number>(0);
+const editorRatio = ref<number>(0.65);
 let isVertResizing = false;
 
 const MIN_EDITOR_HEIGHT = 120;
+
+const updateEditorOnResize = () => {
+  const wrapper = editorContentWrapper.value;
+  if (!wrapper) return;
+  const total = wrapper.clientHeight;
+  let newHeight = Math.round(total * editorRatio.value);
+  const maxPossible = total - MIN_EDITOR_HEIGHT - 6;
+  if (newHeight < MIN_EDITOR_HEIGHT) newHeight = MIN_EDITOR_HEIGHT;
+  if (newHeight > maxPossible) newHeight = maxPossible;
+  editorHeight.value = newHeight;
+  if (monacoEditor) monacoEditor.layout();
+}
 
 const getActiveFile = () => props.files.find((f) => f.id === props.activeFileId);
 
@@ -104,11 +117,13 @@ onMounted(() => {
     const wrapper = editorContentWrapper.value;
     if (wrapper) {
       editorHeight.value = Math.max(MIN_EDITOR_HEIGHT, Math.floor(wrapper.clientHeight * 0.65));
+      editorRatio.value = editorHeight.value / wrapper.clientHeight;
     };
     initMonaco();
     if (monacoEditor) monacoEditor.layout();
     window.addEventListener('mousemove', onVerticalDragging as any);
     window.addEventListener('mouseup', stopVerticalResize as any);
+    window.addEventListener('resize', updateEditorOnResize);
   });
 });
 
@@ -139,12 +154,13 @@ onUnmounted(() => {
   }
   window.removeEventListener('mousemove', onVerticalDragging as any);
   window.removeEventListener('mouseup', stopVerticalResize as any);
+  window.removeEventListener('resize', updateEditorOnResize);
 });
 
 watch(() => props.activeFileId, (newId) => {
-  if (!monacoEditor) return;
-  const file = props.files.find(f => f.id === newId);
-  if (file) monacoEditor.setValue(file.content);
+    if (!monacoEditor) return;
+    const file = props.files.find((f) => f.id === newId);
+    if (file) monacoEditor.setValue(file.content);
 });
 
 watch(() => props.files, () => {
@@ -229,6 +245,7 @@ const onVerticalDragging = (event: MouseEvent) => {
   if (newHeight < MIN_EDITOR_HEIGHT) newHeight = MIN_EDITOR_HEIGHT;
   if (newHeight > maxPossible) newHeight = maxPossible;
   editorHeight.value = newHeight;
+  editorRatio.value = editorHeight.value / rect.height;
   if (monacoEditor) monacoEditor.layout();
 }
 
