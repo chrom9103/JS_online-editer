@@ -56,7 +56,7 @@ const popupMessage = ref('');
 let popupResolve: ((value: boolean | PromiseLike<boolean>) => void) | null = null;
 
 // サイドバーの状態
-const sidebarState = ref({ explorer: true, search: false, runcode: false, git: false });
+const sidebarState = ref({ explorer: true, text: false, search: false, runcode: false, git: false });
 const activeSidebar = ref('explorer');
 
 const sidebarWidth = ref(250);
