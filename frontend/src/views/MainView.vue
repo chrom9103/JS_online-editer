@@ -32,14 +32,14 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted } from 'vue';
-import { v4 as uuidv4 } from 'uuid';
-import ActivityBar from '../components/main/ActivityBar.vue';
-import SideBar from '../components/main/SideBar.vue';
-import EditorArea from '../components/main/EditorArea.vue';
-import ConfirmPopup from '../components/main/ConfirmPopup.vue';
+import { ref, onMounted, onUnmounted } from 'vue'
+import { v4 as uuidv4 } from 'uuid'
+import ActivityBar from '../components/main/ActivityBar.vue'
+import SideBar from '../components/main/SideBar.vue'
+import EditorArea from '../components/main/EditorArea.vue'
+import ConfirmPopup from '../components/main/ConfirmPopup.vue'
 
-const editorAreaRef = ref<InstanceType<typeof EditorArea> | null>(null);
+const editorAreaRef = ref<InstanceType<typeof EditorArea> | null>(null)
 
 const files = ref([
   {
@@ -47,22 +47,22 @@ const files = ref([
     name: 'main.js',
     content: `console.log('Hello world!');`,
   },
-]);
-const activeFileId = ref(files.value[0].id);
-const editingFileId = ref<string | null>(null);
+])
+const activeFileId = ref(files.value[0].id)
+const editingFileId = ref<string | null>(null)
 
-const showConfirmPopup = ref(false);
-const popupMessage = ref('');
-let popupResolve: ((value: boolean | PromiseLike<boolean>) => void) | null = null;
+const showConfirmPopup = ref(false)
+const popupMessage = ref('')
+let popupResolve: ((value: boolean | PromiseLike<boolean>) => void) | null = null
 
 // サイドバーの状態
-const sidebarState = ref({ explorer: true, text: false, search: false, runcode: false, git: false });
-const activeSidebar = ref('explorer');
+const sidebarState = ref({ explorer: true, text: false, search: false, runcode: false, git: false })
+const activeSidebar = ref('explorer')
 
-const sidebarWidth = ref(250);
-const minSidebarWidth = 158;
-const maxSidebarWidth = ref(window.innerWidth - 192);
-let isResizing = false;
+const sidebarWidth = ref(250)
+const minSidebarWidth = 158
+const maxSidebarWidth = ref(window.innerWidth - 192)
+let isResizing = false
 
 const updateMaxSidebarWidth = () => {
   maxSidebarWidth.value = window.innerWidth - 192
@@ -74,124 +74,132 @@ onMounted(() => {
 })
 
 const startResize = (event: MouseEvent) => {
-  if (event.button !== 0) return;
-  isResizing = true;
-  document.body.style.userSelect = 'none';
-  document.body.style.cursor = 'col-resize';
-  window.addEventListener('mousemove', onDragging);
-  window.addEventListener('mouseup', stopResize);
-};
+  if (event.button !== 0) return
+  isResizing = true
+  document.body.style.userSelect = 'none'
+  document.body.style.cursor = 'col-resize'
+  window.addEventListener('mousemove', onDragging)
+  window.addEventListener('mouseup', stopResize)
+}
 
 const onDragging = (event: MouseEvent) => {
-  if (!isResizing) return;
-  const pageX = event.pageX;
-  let newWidth = pageX - 0 - 50;
-  if (newWidth < minSidebarWidth) newWidth = minSidebarWidth;
-  if (newWidth > maxSidebarWidth.value) newWidth = maxSidebarWidth.value;
-  sidebarWidth.value = newWidth;
-};
+  if (!isResizing) return
+  const pageX = event.pageX
+  let newWidth = pageX - 0 - 50
+  if (newWidth < minSidebarWidth) newWidth = minSidebarWidth
+  if (newWidth > maxSidebarWidth.value) newWidth = maxSidebarWidth.value
+  sidebarWidth.value = newWidth
+}
 
 const stopResize = () => {
-  if (!isResizing) return;
-  isResizing = false;
-  document.body.style.userSelect = '';
-  document.body.style.cursor = '';
-  window.removeEventListener('mousemove', onDragging);
-  window.removeEventListener('mouseup', stopResize);
-};
+  if (!isResizing) return
+  isResizing = false
+  document.body.style.userSelect = ''
+  document.body.style.cursor = ''
+  window.removeEventListener('mousemove', onDragging)
+  window.removeEventListener('mouseup', stopResize)
+}
 
 onUnmounted(() => {
-  window.removeEventListener('mousemove', onDragging);
-  window.removeEventListener('mouseup', stopResize);
-  window.removeEventListener('resize', updateMaxSidebarWidth);
-});
+  window.removeEventListener('mousemove', onDragging)
+  window.removeEventListener('mouseup', stopResize)
+  window.removeEventListener('resize', updateMaxSidebarWidth)
+})
 
 const switchSidebar = (view: 'explorer' | 'search' | 'runcode' | 'git') => {
-  sidebarState.value = { explorer: false, text: false, search: false, runcode: false, git: false };
-  (sidebarState.value as any)[view] = true;
-  activeSidebar.value = view;
-};
+  sidebarState.value = { explorer: false, text: false, search: false, runcode: false, git: false }
+  ;(sidebarState.value as any)[view] = true
+  activeSidebar.value = view
+}
 
 const addNewFile = () => {
-  const newFile = { id: uuidv4(), name: `new-file-${files.value.length + 1}.js`, content: `console.log('Hello world!');` };
-  files.value.push(newFile);
-  activeFileId.value = newFile.id;
-};
+  const newFile = {
+    id: uuidv4(),
+    name: `new-file-${files.value.length + 1}.js`,
+    content: `console.log('Hello world!');`,
+  }
+  files.value.push(newFile)
+  activeFileId.value = newFile.id
+}
 
 const switchFile = (fileId: string) => {
-  if (editingFileId.value === fileId) return;
-  activeFileId.value = fileId;
-};
+  if (editingFileId.value === fileId) return
+  activeFileId.value = fileId
+}
 
 const startRename = (fileId: string) => {
-  editingFileId.value = fileId;
-};
+  editingFileId.value = fileId
+}
 
 const finishRename = () => {
-  const file = files.value.find((f) => f.id === editingFileId.value);
-  if (file && file.name.trim() === '') file.name = 'untitled.js';
-  editingFileId.value = null;
-};
+  const file = files.value.find((f) => f.id === editingFileId.value)
+  if (file && file.name.trim() === '') file.name = 'untitled.js'
+  editingFileId.value = null
+}
 
 const confirmDelete = (fileId: string) => {
-  const fileToDelete = files.value.find((f) => f.id === fileId);
-  if (!fileToDelete) return;
+  const fileToDelete = files.value.find((f) => f.id === fileId)
+  if (!fileToDelete) return
   if (files.value.length <= 1) {
-    alert('少なくとも1つのファイルが必要です。');
-    return;
+    alert('少なくとも1つのファイルが必要です。')
+    return
   }
-  popupMessage.value = `本当にファイル「${fileToDelete.name}」を削除してもよろしいですか？`;
-  showConfirmPopup.value = true;
-  return new Promise<boolean>((resolve) => { popupResolve = resolve; (popupResolve as any)._target = fileId; });
-};
+  popupMessage.value = `本当にファイル「${fileToDelete.name}」を削除してもよろしいですか？`
+  showConfirmPopup.value = true
+  return new Promise<boolean>((resolve) => {
+    popupResolve = resolve
+    ;(popupResolve as any)._target = fileId
+  })
+}
 
 const confirmAction = (result: boolean) => {
-  showConfirmPopup.value = false;
+  showConfirmPopup.value = false
   if (popupResolve) {
-    const targetFileId = (popupResolve as any)._target as string | undefined;
-    popupResolve(result);
+    const targetFileId = (popupResolve as any)._target as string | undefined
+    popupResolve(result)
     if (result && targetFileId) {
-      const idx = files.value.findIndex(f => f.id === targetFileId);
+      const idx = files.value.findIndex((f) => f.id === targetFileId)
       if (idx > -1) {
-        files.value.splice(idx, 1);
-        if (activeFileId.value === targetFileId) activeFileId.value = files.value[0].id;
+        files.value.splice(idx, 1)
+        if (activeFileId.value === targetFileId) activeFileId.value = files.value[0].id
       }
     }
-    popupResolve = null;
+    popupResolve = null
   }
-};
+}
 
 const handleUpdateFileContent = ({ id, content }: { id: string; content: string }) => {
-  const f = files.value.find(x => x.id === id);
-  if (f) f.content = content;
-};
+  const f = files.value.find((x) => x.id === id)
+  if (f) f.content = content
+}
 
 // コード実行（サイドバーからの呼び出し用）
 const runCode = () => {
   if (editorAreaRef.value) {
-    editorAreaRef.value.runCode();
+    editorAreaRef.value.runCode()
   }
-};
+}
 
 // コードダウンロード
 const downloadCode = () => {
-  const file = files.value.find(f => f.id === activeFileId.value);
-  if (!file) return;
-  
-  const blob = new Blob([file.content], { type: 'text/javascript' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = file.name;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(url);
-};
+  const file = files.value.find((f) => f.id === activeFileId.value)
+  if (!file) return
+
+  const blob = new Blob([file.content], { type: 'text/javascript' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = file.name
+  document.body.appendChild(a)
+  a.click()
+  document.body.removeChild(a)
+  URL.revokeObjectURL(url)
+}
 </script>
 
 <style>
-html, body {
+html,
+body {
   margin: 0;
   padding: 0;
   overflow: hidden;
@@ -204,7 +212,9 @@ html, body {
   height: 100vh;
   margin: 0;
   padding: 0;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, "Fira Sans", "Droid Sans", "Helvetica Neue", sans-serif;
+  font-family:
+    -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Fira Sans',
+    'Droid Sans', 'Helvetica Neue', sans-serif;
   color: #c5c5c5;
   background-color: #1e1e1e;
   overflow: hidden;
@@ -236,7 +246,8 @@ html, body {
   background: none;
   border: none;
 }
-.activity-icon-item:hover, .activity-icon-item.active {
+.activity-icon-item:hover,
+.activity-icon-item.active {
   color: #ffffff;
 }
 .activity-icon-item.active::before {
@@ -399,7 +410,7 @@ html, body {
   transition: background-color 0.08s;
 }
 .divider:hover {
-  background: rgba(112,129,144,0.25);
+  background: rgba(112, 129, 144, 0.25);
 }
 
 .main-editor-area {
@@ -453,7 +464,9 @@ html, body {
   line-height: 1;
   color: #888;
   opacity: 0.7;
-  transition: opacity 0.2s, color 0.2s;
+  transition:
+    opacity 0.2s,
+    color 0.2s;
 }
 .close-tab-btn:hover {
   opacity: 1;
@@ -506,17 +519,25 @@ html, body {
   overflow: hidden;
 }
 
+.v-divider {
+  height: 6px;
+  cursor: row-resize;
+  background: transparent;
+  transition: background-color 0.08s;
+}
+.v-divider:hover {
+  background: rgba(112, 129, 144, 0.25);
+}
 #editor-container {
-  height: 65%;
   flex-shrink: 0;
 }
 .terminal-area {
-  height: 35%;
   background-color: #1e1e1e;
   color: white;
   display: flex;
   flex-direction: column;
   border-top: 1px solid #000000;
+  flex: 1 1 auto;
 }
 .terminal-header {
   background-color: #2d2d2d;
@@ -588,7 +609,8 @@ html, body {
   justify-content: flex-end;
   gap: 10px;
 }
-.confirm-ok-btn, .confirm-cancel-btn {
+.confirm-ok-btn,
+.confirm-cancel-btn {
   padding: 6px 12px;
   border: none;
   border-radius: 3px;

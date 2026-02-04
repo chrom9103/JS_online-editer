@@ -2,7 +2,12 @@
   <div class="main-editor-area">
     <div class="editor-header">
       <div class="tab-container">
-        <div v-for="file in files" :key="file.id" :class="{ 'editor-tab': true, active: file.id === activeFileId }" @click="$emit('open-file', file.id)">
+        <div
+          v-for="file in files"
+          :key="file.id"
+          :class="{ 'editor-tab': true, active: file.id === activeFileId }"
+          @click="$emit('open-file', file.id)"
+        >
           {{ file.name }}
           <span class="close-tab-btn" @click.stop="$emit('request-delete', file.id)">×</span>
         </div>
@@ -11,14 +16,21 @@
         <button @click="runCode" class="action-icon-btn">▷</button>
       </div>
     </div>
-    <div class="editor-content-wrapper">
-      <div ref="editorContainer" id="editor-container"></div>
+    <div ref="editorContentWrapper" class="editor-content-wrapper">
+      <div
+        ref="editorContainer"
+        id="editor-container"
+        :style="{ height: editorHeight + 'px' }"
+      ></div>
+      <div class="v-divider" @mousedown.prevent="startVerticalResize"></div>
       <div class="terminal-area">
         <div class="terminal-header">
           <span class="terminal-title">TERMINAL</span>
         </div>
         <div class="output-container" ref="terminalContainer">
-          <p v-for="(line, index) in terminalOutput" :key="index" :class="line.type">{{ line.text }}</p>
+          <p v-for="(line, index) in terminalOutput" :key="index" :class="line.type">
+            {{ line.text }}
+          </p>
         </div>
       </div>
     </div>
@@ -52,11 +64,17 @@ const emit = defineEmits(['open-file', 'request-delete', 'update-file-content'])
 
 let monacoEditor: monaco.editor.IStandaloneCodeEditor | null = null;
 const editorContainer = ref<HTMLElement | null>(null);
+const editorContentWrapper = ref<HTMLElement | null>(null);
 const terminalContainer = ref<HTMLElement | null>(null);
 const terminalOutput = ref<{ text: string; type: string }[]>([]);
 const clientId = ref<string>('');
 
-const getActiveFile = () => props.files.find(f => f.id === props.activeFileId);
+const editorHeight = ref<number>(0);
+let isVertResizing = false;
+
+const MIN_EDITOR_HEIGHT = 120;
+
+const getActiveFile = () => props.files.find((f) => f.id === props.activeFileId);
 
 onMounted(() => {
   // ClientIDをlocalStorageから読み出し、なければ生成して保存
@@ -78,7 +96,26 @@ onMounted(() => {
     // localStorageが使えない場合は空のままにする
     clientId.value = '';
   }
+})
 
+onMounted(() => {
+  // 初期高さをコンテナの65%に設定
+  nextTick(() => {
+    const wrapper = editorContentWrapper.value;
+    if (wrapper) {
+      editorHeight.value = Math.max(MIN_EDITOR_HEIGHT, Math.floor(wrapper.clientHeight * 0.65));
+    };
+    initMonaco();
+    if (monacoEditor) monacoEditor.layout();
+    window.addEventListener('mousemove', onVerticalDragging as any);
+    window.addEventListener('mouseup', stopVerticalResize as any);
+  });
+});
+
+// 初期化を高さ確定後に行う
+const initMonaco = () => {
+  if (monacoEditor) return;
+  if (!editorContainer.value) return;
   monacoEditor = monaco.editor.create(editorContainer.value!, {
     value: getActiveFile()?.content ?? '',
     language: 'javascript',
@@ -93,13 +130,15 @@ onMounted(() => {
       emit('update-file-content', { id: file.id, content: value });
     }
   });
-});
+};
 
 onUnmounted(() => {
   if (monacoEditor) {
     monacoEditor.dispose();
     monacoEditor = null;
   }
+  window.removeEventListener('mousemove', onVerticalDragging as any);
+  window.removeEventListener('mouseup', stopVerticalResize as any);
 });
 
 watch(() => props.activeFileId, (newId) => {
@@ -171,6 +210,34 @@ const runCode = async () => {
       if (terminalContainer.value) terminalContainer.value.scrollTop = terminalContainer.value.scrollHeight;
     });
   }
+}
+
+const startVerticalResize = (event: MouseEvent) => {
+  if (event.button !== 0) return;
+  isVertResizing = true;
+  document.body.style.userSelect = 'none';
+  document.body.style.cursor = 'row-resize';
+}
+
+const onVerticalDragging = (event: MouseEvent) => {
+  if (!isVertResizing) return;
+  const wrapper = editorContentWrapper.value;
+  if (!wrapper) return;
+  const rect = wrapper.getBoundingClientRect();
+  let newHeight = event.clientY - rect.top;
+  const maxPossible = rect.height - MIN_EDITOR_HEIGHT - 6; // reserve for divider
+  if (newHeight < MIN_EDITOR_HEIGHT) newHeight = MIN_EDITOR_HEIGHT;
+  if (newHeight > maxPossible) newHeight = maxPossible;
+  editorHeight.value = newHeight;
+  if (monacoEditor) monacoEditor.layout();
+}
+
+const stopVerticalResize = () => {
+  if (!isVertResizing) return;
+  isVertResizing = false;
+  document.body.style.userSelect = '';
+  document.body.style.cursor = '';
+  if (monacoEditor) monacoEditor.layout();
 };
 
 defineExpose({ runCode });
