@@ -32,7 +32,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onUnmounted } from 'vue';
+import { ref, onMounted, onUnmounted } from 'vue';
 import { v4 as uuidv4 } from 'uuid';
 import ActivityBar from '../components/main/ActivityBar.vue';
 import SideBar from '../components/main/SideBar.vue';
@@ -61,8 +61,17 @@ const activeSidebar = ref('explorer');
 
 const sidebarWidth = ref(250);
 const minSidebarWidth = 158;
-const maxSidebarWidth = 600;
+const maxSidebarWidth = ref(window.innerWidth - 192);
 let isResizing = false;
+
+const updateMaxSidebarWidth = () => {
+  maxSidebarWidth.value = window.innerWidth - 192
+  if (sidebarWidth.value > maxSidebarWidth.value) sidebarWidth.value = maxSidebarWidth.value
+}
+
+onMounted(() => {
+  window.addEventListener('resize', updateMaxSidebarWidth)
+})
 
 const startResize = (event: MouseEvent) => {
   if (event.button !== 0) return;
@@ -78,7 +87,7 @@ const onDragging = (event: MouseEvent) => {
   const pageX = event.pageX;
   let newWidth = pageX - 0 - 50;
   if (newWidth < minSidebarWidth) newWidth = minSidebarWidth;
-  if (newWidth > maxSidebarWidth) newWidth = maxSidebarWidth;
+  if (newWidth > maxSidebarWidth.value) newWidth = maxSidebarWidth.value;
   sidebarWidth.value = newWidth;
 };
 
@@ -94,6 +103,7 @@ const stopResize = () => {
 onUnmounted(() => {
   window.removeEventListener('mousemove', onDragging);
   window.removeEventListener('mouseup', stopResize);
+  window.removeEventListener('resize', updateMaxSidebarWidth);
 });
 
 const switchSidebar = (view: 'explorer' | 'search' | 'runcode' | 'git') => {
@@ -118,13 +128,13 @@ const startRename = (fileId: string) => {
 };
 
 const finishRename = () => {
-  const file = files.value.find(f => f.id === editingFileId.value);
+  const file = files.value.find((f) => f.id === editingFileId.value);
   if (file && file.name.trim() === '') file.name = 'untitled.js';
   editingFileId.value = null;
 };
 
 const confirmDelete = (fileId: string) => {
-  const fileToDelete = files.value.find(f => f.id === fileId);
+  const fileToDelete = files.value.find((f) => f.id === fileId);
   if (!fileToDelete) return;
   if (files.value.length <= 1) {
     alert('少なくとも1つのファイルが必要です。');
