@@ -33,8 +33,8 @@
 
 <script setup lang="ts">
 const props = defineProps<{
-  files: Array<{ id: string; name: string; content: string }>;
-  activeFileId: string;
-  editingFileId: string | null;
-}>();
+  files: Array<{ id: string; name: string; content: string }>
+  activeFileId: string
+  editingFileId: string | null
+}>()
 </script>

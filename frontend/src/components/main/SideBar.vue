@@ -1,7 +1,12 @@
 <template>
   <div class="side-bar">
-    <component v-if="sidebarState.explorer" :is="FileExplorer" class="file-explorer"
-      :files="files" :activeFileId="activeFileId" :editingFileId="editingFileId"
+    <component
+      v-if="sidebarState.explorer"
+      :is="FileExplorer"
+      class="file-explorer"
+      :files="files"
+      :activeFileId="activeFileId"
+      :editingFileId="editingFileId"
       @add-new="$emit('add-new')"
       @open-file="$emit('open-file', $event)"
       @start-rename="$emit('start-rename', $event)"
@@ -33,12 +38,18 @@
 </template>
 
 <script setup lang="ts">
-import FileExplorer from './FileExplorer.vue';
+import FileExplorer from './sideBar/FileExplorer.vue'
 
 const props = defineProps<{
-  sidebarState: { explorer: boolean; text: boolean; search: boolean; runcode: boolean; git: boolean };
-  files: Array<{ id: string; name: string; content: string }>;
-  activeFileId: string;
-  editingFileId: string | null;
-}>();
+  sidebarState: {
+    explorer: boolean
+    text: boolean
+    search: boolean
+    runcode: boolean
+    git: boolean
+  }
+  files: Array<{ id: string; name: string; content: string }>
+  activeFileId: string
+  editingFileId: string | null
+}>()
 </script>
