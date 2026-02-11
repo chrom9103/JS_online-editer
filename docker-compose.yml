@@ -26,6 +26,7 @@ services:
     environment:
       - PORT=8081
       - SANDBOX_SERVICE_URL=http://sandbox:3000
+      - ADMIN_PASSWORD_HASH=${ADMIN_PASSWORD_HASH}
     depends_on:
       - sandbox
 

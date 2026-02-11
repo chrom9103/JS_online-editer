@@ -37,11 +37,7 @@ export default defineConfig({
     },
     proxy: {
       '/api': {
-        target: process.env.VITE_API_URL || 'http://localhost:8081',
-        changeOrigin: true,
-      },
-      '/execute': {
-        target: process.env.VITE_API_URL || 'http://localhost:8081',
+        target: 'http://backend:8081',
         changeOrigin: true,
       },
     },

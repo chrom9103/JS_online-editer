@@ -16,7 +16,7 @@ func main() {
 	config := cors.DefaultConfig()
 	config.AllowOrigins = []string{"*"}
 	config.AllowMethods = []string{"GET", "POST", "OPTIONS"}
-	config.AllowHeaders = []string{"Origin", "Content-Type", "Accept"}
+	config.AllowHeaders = []string{"Origin", "Content-Type", "Accept", "Authorization"}
 	r.Use(cors.New(config))
 
 	// ヘルスチェック
@@ -27,9 +27,17 @@ func main() {
 	// コード実行エンドポイント
 	r.POST("/api/execute", handlers.ExecuteCode)
 
-	// 管理用API: runs一覧とファイル取得
-	r.GET("/api/runs", handlers.ListRuns)
-	r.GET("/api/runs/:name", handlers.GetRunFile)
+	// 管理用認証API
+	r.POST("/api/admin/auth", handlers.AdminAuth)
+	r.GET("/api/admin/verify", handlers.AdminVerifyToken)
+
+	// 管理用API: runs一覧とファイル取得（認証必須）
+	adminAPI := r.Group("/api")
+	adminAPI.Use(handlers.AdminAuthMiddleware())
+	{
+		adminAPI.GET("/runs", handlers.ListRuns)
+		adminAPI.GET("/runs/:name", handlers.GetRunFile)
+	}
 
 	port := os.Getenv("PORT")
 	if port == "" {
