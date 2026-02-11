@@ -33,3 +33,5 @@ secrets
 *.tar
 
 tmp
+
+.env
