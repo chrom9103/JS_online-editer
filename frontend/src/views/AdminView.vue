@@ -158,6 +158,12 @@ const handleLogin = async () => {
       body: JSON.stringify({ password: password.value }),
     })
 
+    if (!res.ok) {
+      const txt = await res.text().catch(() => '')
+      authError.value = `Server error ${res.status}${txt ? ': ' + txt.slice(0, 200) : ''}`
+      return
+    }
+
     const data = await res.json()
 
     if (data.success && data.token) {
@@ -212,6 +218,11 @@ const checkStoredAuth = async () => {
     const res = await fetch(`${getApiBaseUrl()}/admin/verify`, {
       headers: { Authorization: `Bearer ${storedToken}` },
     })
+
+    if (!res.ok) {
+      return false
+    }
+
     const data = await res.json()
 
     if (data.valid) {
