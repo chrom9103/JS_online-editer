@@ -1,635 +1,298 @@
 <template>
-  <div class="container" :style="{ gridTemplateColumns: `50px ${sidebarWidth}px 6px 1fr` }">
-    <ActivityBar :active="activeSidebar" @switch="switchSidebar" />
+  <div class="admin-container">
+    <header class="admin-header">
+      <h1>Admin - Runs</h1>
+      <button class="refresh-btn" @click="fetchRuns">Refresh</button>
+    </header>
 
-    <SideBar
-      :sidebarState="sidebarState"
-      :files="files"
-      :activeFileId="activeFileId"
-      :editingFileId="editingFileId"
-      @add-new="addNewFile"
-      @open-file="switchFile"
-      @start-rename="startRename"
-      @finish-rename="finishRename"
-      @request-delete="confirmDelete"
-      @run-code="runCode"
-      @download-code="downloadCode"
-    />
+    <div class="runs-list">
+      <div v-if="loading" class="loading">Loading...</div>
+      <div v-else-if="error" class="error">{{ error }}</div>
+      <div v-else-if="runs.length === 0" class="empty">No runs found</div>
+      <table v-else>
+        <thead>
+          <tr>
+            <th>File Name</th>
+            <th>Size</th>
+            <th>Modified</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr v-for="run in runs" :key="run.name" @click="selectRun(run)">
+            <td>{{ run.name }}</td>
+            <td>{{ formatSize(run.size) }}</td>
+            <td>{{ formatDate(run.modTime) }}</td>
+            <td>
+              <button class="view-btn" @click.stop="viewRun(run)">View</button>
+              <a class="download-link" :href="`/api/runs/${run.name}`" target="_blank" @click.stop
+                >Download</a
+              >
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
 
-    <div class="divider" @mousedown.prevent="startResize"></div>
-
-    <EditorArea
-      ref="editorAreaRef"
-      :files="files"
-      :activeFileId="activeFileId"
-      @open-file="switchFile"
-      @request-delete="confirmDelete"
-      @update-file-content="handleUpdateFileContent"
-    />
-
-    <ConfirmPopup v-if="showConfirmPopup" :message="popupMessage" @confirm="confirmAction" />
+    <!-- Code Viewer Modal -->
+    <div v-if="selectedRun" class="modal-overlay" @click="closeModal">
+      <div class="modal-content" @click.stop>
+        <div class="modal-header">
+          <h2>{{ selectedRun.name }}</h2>
+          <button class="close-btn" @click="closeModal">&times;</button>
+        </div>
+        <div class="modal-body">
+          <pre><code>{{ selectedRunContent }}</code></pre>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted } from 'vue'
-import { v4 as uuidv4 } from 'uuid'
-import ActivityBar from '../components/main/ActivityBar.vue'
-import SideBar from '../components/main/SideBar.vue'
-import EditorArea from '../components/main/EditorArea.vue'
-import ConfirmPopup from '../components/main/ConfirmPopup.vue'
+import { ref, onMounted } from 'vue'
 
-const editorAreaRef = ref<InstanceType<typeof EditorArea> | null>(null)
+interface RunFile {
+  name: string
+  size: number
+  modTime: string
+}
 
-const files = ref([
-  {
-    id: uuidv4(),
-    name: 'main.js',
-    content: `console.log('Hello world!');`,
-  },
-])
-const activeFileId = ref(files.value[0].id)
-const editingFileId = ref<string | null>(null)
+const runs = ref<RunFile[]>([])
+const loading = ref(false)
+const error = ref('')
+const selectedRun = ref<RunFile | null>(null)
+const selectedRunContent = ref('')
 
-const showConfirmPopup = ref(false)
-const popupMessage = ref('')
-let popupResolve: ((value: boolean | PromiseLike<boolean>) => void) | null = null
+const fetchRuns = async () => {
+  loading.value = true
+  error.value = ''
+  try {
+    const res = await fetch('/api/runs')
+    if (!res.ok) throw new Error(`HTTP ${res.status}`)
+    const data = await res.json()
+    runs.value = data || []
+  } catch (e: any) {
+    error.value = `Failed to fetch runs: ${e.message}`
+  } finally {
+    loading.value = false
+  }
+}
 
-// サイドバーの状態
-const sidebarState = ref({ explorer: true, text: false, search: false, runcode: false, git: false })
-const activeSidebar = ref('explorer')
+const selectRun = (run: RunFile) => {
+  viewRun(run)
+}
 
-const sidebarWidth = ref(250)
-const minSidebarWidth = 158
-const maxSidebarWidth = ref(window.innerWidth - 192)
-let isResizing = false
+const viewRun = async (run: RunFile) => {
+  try {
+    const res = await fetch(`/api/runs/${run.name}`)
+    if (!res.ok) throw new Error(`HTTP ${res.status}`)
+    selectedRunContent.value = await res.text()
+    selectedRun.value = run
+  } catch (e: any) {
+    error.value = `Failed to load file: ${e.message}`
+  }
+}
 
-const updateMaxSidebarWidth = () => {
-  maxSidebarWidth.value = window.innerWidth - 192
-  if (sidebarWidth.value > maxSidebarWidth.value) sidebarWidth.value = maxSidebarWidth.value
+const closeModal = () => {
+  selectedRun.value = null
+  selectedRunContent.value = ''
+}
+
+const formatSize = (bytes: number): string => {
+  if (bytes < 1024) return `${bytes} B`
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
+}
+
+const formatDate = (isoDate: string): string => {
+  const d = new Date(isoDate)
+  return d.toLocaleString('ja-JP')
 }
 
 onMounted(() => {
-  window.addEventListener('resize', updateMaxSidebarWidth)
+  fetchRuns()
 })
-
-const startResize = (event: MouseEvent) => {
-  if (event.button !== 0) return
-  isResizing = true
-  document.body.style.userSelect = 'none'
-  document.body.style.cursor = 'col-resize'
-  window.addEventListener('mousemove', onDragging)
-  window.addEventListener('mouseup', stopResize)
-}
-
-const onDragging = (event: MouseEvent) => {
-  if (!isResizing) return
-  const pageX = event.pageX
-  let newWidth = pageX - 0 - 50
-  if (newWidth < minSidebarWidth) newWidth = minSidebarWidth
-  if (newWidth > maxSidebarWidth.value) newWidth = maxSidebarWidth.value
-  sidebarWidth.value = newWidth
-}
-
-const stopResize = () => {
-  if (!isResizing) return
-  isResizing = false
-  document.body.style.userSelect = ''
-  document.body.style.cursor = ''
-  window.removeEventListener('mousemove', onDragging)
-  window.removeEventListener('mouseup', stopResize)
-}
-
-onUnmounted(() => {
-  window.removeEventListener('mousemove', onDragging)
-  window.removeEventListener('mouseup', stopResize)
-  window.removeEventListener('resize', updateMaxSidebarWidth)
-})
-
-const switchSidebar = (view: 'explorer' | 'search' | 'runcode' | 'git') => {
-  sidebarState.value = { explorer: false, text: false, search: false, runcode: false, git: false }
-  ;(sidebarState.value as any)[view] = true
-  activeSidebar.value = view
-}
-
-const addNewFile = () => {
-  const newFile = {
-    id: uuidv4(),
-    name: `new-file-${files.value.length + 1}.js`,
-    content: `console.log('Hello world!');`,
-  }
-  files.value.push(newFile)
-  activeFileId.value = newFile.id
-}
-
-const switchFile = (fileId: string) => {
-  if (editingFileId.value === fileId) return
-  activeFileId.value = fileId
-}
-
-const startRename = (fileId: string) => {
-  editingFileId.value = fileId
-}
-
-const finishRename = () => {
-  const file = files.value.find((f) => f.id === editingFileId.value)
-  if (file && file.name.trim() === '') file.name = 'untitled.js'
-  editingFileId.value = null
-}
-
-const confirmDelete = (fileId: string) => {
-  const fileToDelete = files.value.find((f) => f.id === fileId)
-  if (!fileToDelete) return
-  if (files.value.length <= 1) {
-    alert('少なくとも1つのファイルが必要です。')
-    return
-  }
-  popupMessage.value = `本当にファイル「${fileToDelete.name}」を削除してもよろしいですか？`
-  showConfirmPopup.value = true
-  return new Promise<boolean>((resolve) => {
-    popupResolve = resolve
-    ;(popupResolve as any)._target = fileId
-  })
-}
-
-const confirmAction = (result: boolean) => {
-  showConfirmPopup.value = false
-  if (popupResolve) {
-    const targetFileId = (popupResolve as any)._target as string | undefined
-    popupResolve(result)
-    if (result && targetFileId) {
-      const idx = files.value.findIndex((f) => f.id === targetFileId)
-      if (idx > -1) {
-        files.value.splice(idx, 1)
-        if (activeFileId.value === targetFileId) activeFileId.value = files.value[0].id
-      }
-    }
-    popupResolve = null
-  }
-}
-
-const handleUpdateFileContent = ({ id, content }: { id: string; content: string }) => {
-  const f = files.value.find((x) => x.id === id)
-  if (f) f.content = content
-}
-
-// コード実行（サイドバーからの呼び出し用）
-const runCode = () => {
-  if (editorAreaRef.value) {
-    editorAreaRef.value.runCode()
-  }
-}
-
-// コードダウンロード
-const downloadCode = () => {
-  const file = files.value.find((f) => f.id === activeFileId.value)
-  if (!file) return
-
-  const blob = new Blob([file.content], { type: 'text/javascript' })
-  const url = URL.createObjectURL(blob)
-  const a = document.createElement('a')
-  a.href = url
-  a.download = file.name
-  document.body.appendChild(a)
-  a.click()
-  document.body.removeChild(a)
-  URL.revokeObjectURL(url)
-}
 </script>
 
-<style>
-html,
-body {
-  margin: 0;
-  padding: 0;
-  overflow: hidden;
-}
-
-.container {
-  display: grid;
-  grid-template-rows: 1fr;
-  width: 100vw;
-  height: 100vh;
-  margin: 0;
-  padding: 0;
-  font-family:
-    -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Fira Sans',
-    'Droid Sans', 'Helvetica Neue', sans-serif;
-  color: #c5c5c5;
+<style scoped>
+.admin-container {
+  min-height: 100vh;
   background-color: #1e1e1e;
-  overflow: hidden;
+  color: #c5c5c5;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
 }
 
-.activity-bar {
-  grid-column: 1;
-  background-color: #333333;
-  padding-top: 10px;
+.admin-header {
   display: flex;
-  flex-direction: column;
+  justify-content: space-between;
   align-items: center;
-  gap: 15px;
-}
-.activity-icon-group {
-  display: flex;
-  flex-direction: column;
-  gap: 15px;
-}
-.activity-icon-item {
-  width: 50px;
-  height: 48px;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  cursor: pointer;
-  color: #858585;
-  position: relative;
-  background: none;
-  border: none;
-}
-.activity-icon-item:hover,
-.activity-icon-item.active {
-  color: #ffffff;
-}
-.activity-icon-item.active::before {
-  content: '';
-  position: absolute;
-  left: 0;
-  top: 0;
-  bottom: 0;
-  width: 2px;
-  background-color: #ffffff;
-}
-.icon {
-  width: 24px;
-  height: 24px;
-}
-
-.side-bar {
-  grid-column: 2;
+  padding: 20px 30px;
   background-color: #252526;
-  padding: 10px;
-  border-right: 1px solid #000000;
-  overflow-y: auto;
-}
-.sidebar-content {
-  padding: 10px 0;
-}
-.sidebar-content h3 {
-  color: #c5c5c5;
-  font-size: 11px;
-  font-weight: 600;
-  margin-top: 0;
-  margin-bottom: 10px;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-}
-.search-box input {
-  width: 100%;
-  box-sizing: border-box;
-  background-color: #3e3e40;
-  border: 1px solid #333333;
-  color: #cccccc;
-  padding: 5px 10px;
-  border-radius: 3px;
+  border-bottom: 1px solid #000;
 }
 
-.file-explorer h3 {
-  color: #c5c5c5;
-  font-size: 11px;
-  font-weight: 600;
-  margin-top: 0;
-  margin-bottom: 10px;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-}
-.file-explorer .file-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding-bottom: 5px;
-  margin-bottom: 5px;
-  border-bottom: 1px solid transparent;
-}
-.add-file-btn {
-  background: transparent;
-  border: none;
-  color: #c5c5c5;
-  cursor: pointer;
+.admin-header h1 {
+  margin: 0;
   font-size: 20px;
-  line-height: 1;
-  padding: 0 5px;
-}
-.add-file-btn:hover {
-  color: #ffffff;
+  font-weight: 500;
 }
 
-.files-title {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 5px 0;
-}
-.files-title p {
-  font-size: 11px;
-  color: #888888;
-  text-transform: uppercase;
-  font-weight: normal;
-  margin: 0;
-  letter-spacing: 0.5px;
-}
-.file-explorer ul.file-list {
-  list-style: none;
-  padding: 0;
-  margin: 0;
-}
-.file-explorer ul.file-list li {
-  display: flex;
-  align-items: center;
-  padding: 2px 10px;
-  cursor: pointer;
-  color: #c5c5c5;
-  font-size: 13px;
-  transition: background-color 0.1s;
-  position: relative;
-}
-.file-explorer ul.file-list li:hover {
-  background-color: #2a2d2e;
-}
-.file-explorer ul.file-list li.active {
-  background-color: #006090;
-  color: #ffffff;
-}
-.file-explorer ul.file-list li span {
-  flex-grow: 1;
-  user-select: none;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.file-explorer ul.file-list li input {
-  flex-grow: 1;
-  background-color: #3e3e40;
-  color: white;
-  border: 1px solid #007acc;
-  padding: 2px 4px;
-  outline: none;
-  box-sizing: border-box;
-  font-size: 13px;
-}
-.delete-btn {
-  background: transparent;
-  border: none;
-  color: #c5c5c5;
-  cursor: pointer;
-  font-size: 18px;
-  padding: 0;
-  line-height: 1;
-  margin-left: 10px;
-  opacity: 0;
-  transition: opacity 0.2s;
-}
-.file-explorer ul.file-list li:hover .delete-btn {
-  opacity: 1;
-}
-.file-explorer ul.file-list li.active .delete-btn {
-  opacity: 1;
-  color: #ffffff;
-}
-.delete-btn:hover {
-  color: #e44f50;
-}
-
-.divider {
-  grid-column: 3;
-  width: 6px;
-  background: transparent;
-  cursor: col-resize;
-  -webkit-user-select: none;
-  -moz-user-select: none;
-  user-select: none;
-  transition: background-color 0.08s;
-}
-.divider:hover {
-  background: rgba(112, 129, 144, 0.25);
-}
-
-.main-editor-area {
-  grid-column: 4;
-  background-color: #1e1e1e;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-}
-
-.editor-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  background-color: #2d2d2d;
-  border-bottom: 1px solid #000000;
-  min-height: 35px;
-  padding-right: 10px;
-}
-.tab-container {
-  display: flex;
-  overflow-x: auto;
-  flex-grow: 1;
-  white-space: nowrap;
-}
-.editor-tab {
-  padding: 8px 15px;
-  cursor: pointer;
-  border-right: 1px solid #000000;
-  color: #888;
-  background-color: #2d2d2d;
-  font-size: 13px;
-  display: flex;
-  align-items: center;
-  flex-shrink: 0;
-}
-.editor-tab:hover {
-  background-color: #333333;
-  color: #ffffff;
-}
-.editor-tab.active {
-  background-color: #1e1e1e;
-  color: #ffffff;
-  border-bottom: 2px solid #007acc;
-  padding-bottom: 6px;
-}
-.close-tab-btn {
-  margin-left: 10px;
-  font-weight: normal;
-  font-size: 16px;
-  line-height: 1;
-  color: #888;
-  opacity: 0.7;
-  transition:
-    opacity 0.2s,
-    color 0.2s;
-}
-.close-tab-btn:hover {
-  opacity: 1;
-  color: #ffffff;
-}
-.editor-tab.active .close-tab-btn {
-  color: #ffffff;
-}
-.editor-actions {
-  display: flex;
-  gap: 8px;
-}
-.action-btn {
+.refresh-btn {
   background-color: #007acc;
   color: white;
   border: none;
-  margin: 6px 0 6px 0;
-  padding: 6px 10px;
-  border-radius: 3px;
-  width: 100%;
+  padding: 8px 16px;
+  border-radius: 4px;
   cursor: pointer;
   font-size: 13px;
-  transition: background-color 0.2s;
-  white-space: nowrap;
 }
-.action-btn:hover {
+
+.refresh-btn:hover {
   background-color: #0066a3;
 }
-.action-icon-btn {
-  background-color: #2d2d2d;
-  color: white;
-  border: none;
-  margin: 6px 0 6px 0;
-  padding: 6px 10px;
-  border-radius: 3px;
-  cursor: pointer;
-  font-size: 13px;
-  transition: background-color 0.2s;
-  width: 32px;
-  height: 32px;
-}
-.action-icon-btn:hover {
-  background-color: #1d1d1d;
+
+.runs-list {
+  padding: 20px 30px;
 }
 
-.editor-content-wrapper {
-  display: flex;
-  flex-direction: column;
-  flex-grow: 1;
-  overflow: hidden;
+.loading,
+.error,
+.empty {
+  text-align: center;
+  padding: 40px;
+  font-size: 14px;
 }
 
-.v-divider {
-  height: 6px;
-  cursor: row-resize;
-  background: transparent;
-  transition: background-color 0.08s;
-}
-.v-divider:hover {
-  background: rgba(112, 129, 144, 0.25);
-}
-#editor-container {
-  flex-shrink: 0;
-}
-.terminal-area {
-  background-color: #1e1e1e;
-  color: white;
-  display: flex;
-  flex-direction: column;
-  border-top: 1px solid #000000;
-  flex: 1 1 auto;
-}
-.terminal-header {
-  background-color: #2d2d2d;
-  padding: 5px 10px;
-  display: flex;
-  align-items: center;
-  min-height: 28px;
-}
-.terminal-title {
-  font-size: 13px;
-  font-weight: 500;
-  color: #c5c5c5;
-  user-select: none;
-}
-.output-container {
-  padding: 10px;
-  overflow-y: auto;
-  flex-grow: 1;
-  font-size: 13px;
-}
-.terminal-area p {
-  margin: 0;
-  font-family: 'Courier New', Courier, monospace;
-  white-space: pre-wrap;
-  word-wrap: break-word;
-  line-height: 1.4;
-  color: white;
-}
-.terminal-area p.log {
-  color: #cccccc;
-}
-.terminal-area p.error {
+.error {
   color: #e44f50;
 }
-.terminal-area p.info {
-  color: #888888;
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
 }
 
-.confirm-overlay {
+thead {
+  background-color: #252526;
+}
+
+th,
+td {
+  padding: 12px 16px;
+  text-align: left;
+  border-bottom: 1px solid #333;
+}
+
+th {
+  font-weight: 600;
+  color: #888;
+  text-transform: uppercase;
+  font-size: 11px;
+  letter-spacing: 0.5px;
+}
+
+tbody tr {
+  cursor: pointer;
+  transition: background-color 0.15s;
+}
+
+tbody tr:hover {
+  background-color: #2a2d2e;
+}
+
+.view-btn {
+  background-color: #3c3c3c;
+  color: white;
+  border: none;
+  padding: 4px 10px;
+  border-radius: 3px;
+  cursor: pointer;
+  font-size: 12px;
+  margin-right: 8px;
+}
+
+.view-btn:hover {
+  background-color: #555;
+}
+
+.download-link {
+  color: #007acc;
+  text-decoration: none;
+  font-size: 12px;
+}
+
+.download-link:hover {
+  text-decoration: underline;
+}
+
+/* Modal */
+.modal-overlay {
   position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background-color: rgba(0, 0, 0, 0.6);
+  inset: 0;
+  background-color: rgba(0, 0, 0, 0.7);
   display: flex;
   justify-content: center;
   align-items: center;
   z-index: 1000;
 }
-.confirm-popup {
+
+.modal-content {
   background-color: #252526;
-  color: #c5c5c5;
-  padding: 20px;
-  border-radius: 5px;
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.4);
-  text-align: center;
-  max-width: 400px;
-  width: 90%;
-  border: 1px solid #000000;
-}
-.confirm-popup p {
-  margin-bottom: 20px;
-  font-size: 14px;
-  color: #c5c5c5;
-}
-.popup-actions {
+  border: 1px solid #000;
+  border-radius: 6px;
+  width: 80%;
+  max-width: 900px;
+  max-height: 80vh;
   display: flex;
-  justify-content: flex-end;
-  gap: 10px;
+  flex-direction: column;
 }
-.confirm-ok-btn,
-.confirm-cancel-btn {
-  padding: 6px 12px;
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 20px;
+  border-bottom: 1px solid #333;
+}
+
+.modal-header h2 {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 500;
+  color: #c5c5c5;
+}
+
+.close-btn {
+  background: none;
   border: none;
-  border-radius: 3px;
+  color: #888;
+  font-size: 24px;
   cursor: pointer;
+  line-height: 1;
+}
+
+.close-btn:hover {
+  color: #fff;
+}
+
+.modal-body {
+  padding: 20px;
+  overflow: auto;
+  flex: 1;
+}
+
+.modal-body pre {
+  margin: 0;
+  font-family: 'Courier New', Courier, monospace;
   font-size: 13px;
-  transition: background-color 0.2s;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  word-wrap: break-word;
 }
-.confirm-ok-btn {
-  background-color: #007acc;
-  color: white;
-}
-.confirm-ok-btn:hover {
-  background-color: #0066a3;
-}
-.confirm-cancel-btn {
-  background-color: #3c3c3c;
-  color: white;
-}
-.confirm-cancel-btn:hover {
-  background-color: #555555;
+
+.modal-body code {
+  color: #d4d4d4;
 }
 </style>

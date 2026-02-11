@@ -25,7 +25,11 @@ func main() {
 	})
 
 	// コード実行エンドポイント
-	r.POST("/execute", handlers.ExecuteCode)
+	r.POST("/api/execute", handlers.ExecuteCode)
+
+	// 管理用API: runs一覧とファイル取得
+	r.GET("/api/runs", handlers.ListRuns)
+	r.GET("/api/runs/:name", handlers.GetRunFile)
 
 	port := os.Getenv("PORT")
 	if port == "" {
