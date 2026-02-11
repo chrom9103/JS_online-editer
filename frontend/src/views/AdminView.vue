@@ -36,29 +36,31 @@
           <div v-if="loading" class="loading">Loading...</div>
           <div v-else-if="error" class="error">{{ error }}</div>
           <div v-else-if="runs.length === 0" class="empty">No runs found</div>
-          <table v-else>
-            <thead>
-              <tr>
-                <th class="col-num">#</th>
-                <th>File Name</th>
-                <th>Size</th>
-                <th>Modified</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr
-                v-for="(run, idx) in runs"
-                :key="run.name"
-                :class="{ active: selectedRun?.name === run.name }"
-                @click="selectRun(run)"
-              >
-                <td class="line-num">{{ idx + 1 }}</td>
-                <td>{{ run.name }}</td>
-                <td>{{ formatSize(run.size) }}</td>
-                <td>{{ formatDate(run.modTime) }}</td>
-              </tr>
-            </tbody>
-          </table>
+          <div class="table-scroll" v-else ref="tableScroll">
+            <table ref="tableEl">
+              <thead>
+                <tr>
+                  <th class="col-num">#</th>
+                  <th>File Name</th>
+                  <th>Size</th>
+                  <th>Modified</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr
+                  v-for="(run, idx) in runs"
+                  :key="run.name"
+                  :class="{ active: selectedRun?.name === run.name }"
+                  @click="selectRun(run)"
+                >
+                  <td class="line-num">{{ idx + 1 }}</td>
+                  <td>{{ run.name }}</td>
+                  <td>{{ formatSize(run.size) }}</td>
+                  <td>{{ formatDate(run.modTime) }}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
         </div>
 
         <!-- Right: Editor -->
@@ -79,6 +81,9 @@
           <div class="editor-wrapper">
             <MonacoEditor :content="selectedRunContent" :height="editorHeight" :read-only="true" />
           </div>
+        </div>
+        <div ref="globalScroll" class="global-scroll">
+        <div class="global-inner"></div>
         </div>
       </div>
     </template>
@@ -112,6 +117,13 @@ const error = ref('')
 const selectedRun = ref<RunFile | null>(null)
 const selectedRunContent = ref('')
 const editorHeight = ref(600)
+const tableScroll = ref<HTMLElement | null>(null)
+const tableEl = ref<HTMLElement | null>(null)
+const globalScroll = ref<HTMLElement | null>(null)
+const tableWidth = ref(0)
+
+let onTableScroll: (() => void) | null = null
+let onGlobalScroll: (() => void) | null = null
 
 // 認証トークンをヘッダーに含めてfetch
 const authFetch = async (url: string, options: RequestInit = {}) => {
@@ -279,6 +291,33 @@ onMounted(async () => {
   updateEditorHeight()
   window.addEventListener('resize', updateEditorHeight)
 
+  // set up horizontal scrollbar sync
+  const updateTableWidth = () => {
+    tableWidth.value = tableEl.value ? tableEl.value.scrollWidth : 0
+    if (globalScroll.value && tableWidth.value) {
+      const inner = globalScroll.value.querySelector('.global-inner') as HTMLElement | null
+      if (inner) inner.style.width = tableWidth.value + 'px'
+    }
+  }
+
+  onTableScroll = () => {
+    if (!tableScroll.value || !globalScroll.value) return
+    globalScroll.value.scrollLeft = tableScroll.value.scrollLeft
+  }
+
+  onGlobalScroll = () => {
+    if (!tableScroll.value || !globalScroll.value) return
+    tableScroll.value.scrollLeft = globalScroll.value.scrollLeft
+  }
+
+  // attach when elements available
+  setTimeout(() => {
+    updateTableWidth()
+    if (tableScroll.value) tableScroll.value.addEventListener('scroll', onTableScroll!)
+    if (globalScroll.value) globalScroll.value.addEventListener('scroll', onGlobalScroll!)
+    window.addEventListener('resize', updateTableWidth)
+  }, 0)
+
   // 保存されたトークンをチェック
   const isValid = await checkStoredAuth()
   if (isValid) {
@@ -288,6 +327,10 @@ onMounted(async () => {
 
 onUnmounted(() => {
   window.removeEventListener('resize', updateEditorHeight)
+  if (tableScroll.value && onTableScroll)
+    tableScroll.value.removeEventListener('scroll', onTableScroll)
+  if (globalScroll.value && onGlobalScroll)
+    globalScroll.value.removeEventListener('scroll', onGlobalScroll)
 })
 </script>
 
@@ -432,9 +475,30 @@ onUnmounted(() => {
 .file-list-panel {
   width: 30%;
   border-right: 1px solid #333;
-  overflow: auto;
+  overflow-y: auto;
+  overflow-x: hidden;
   background-color: #1e1e1e;
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, 'Roboto Mono', 'Courier New', monospace;
+  padding-bottom: 22px; /* space for global scrollbar */
+}
+
+.table-scroll {
+  overflow-x: auto;
+}
+
+.global-scroll {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  width: 30%;
+  height: 18px;
+  overflow-x: auto;
+  background: transparent;
+  z-index: 50;
+}
+
+.global-scroll .global-inner {
+  height: 1px;
 }
 
 .loading,
