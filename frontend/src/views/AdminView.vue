@@ -67,7 +67,7 @@
             <span class="file-name">{{ selectedRun.name }}</span>
             <a
               class="download-link"
-              :href="`/api/runs/${selectedRun.name}`"
+              :href="`${getApiBaseUrl()}/runs/${selectedRun.name}`"
               target="_blank"
               @click.prevent="downloadFile"
               >Download</a
@@ -81,7 +81,7 @@
           </div>
         </div>
         <div ref="globalScroll" class="global-scroll">
-        <div class="global-inner"></div>
+          <div class="global-inner"></div>
         </div>
       </div>
     </template>
@@ -91,6 +91,12 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted } from 'vue'
 import MonacoEditor from '../components/main/editorArea/MonacoEditor.vue'
+
+// API base helper (matches EditorArea approach)
+const getApiBaseUrl = () => {
+  if (import.meta.env.PROD) return '/playground/api'
+  return '/api'
+}
 
 interface RunFile {
   name: string
@@ -125,9 +131,14 @@ let onGlobalScroll: (() => void) | null = null
 
 // 認証トークンをヘッダーに含めてfetch
 const authFetch = async (url: string, options: RequestInit = {}) => {
+  // map /api prefix to production base if needed
+  let resolved = url
+  if (typeof url === 'string' && url.startsWith('/api')) {
+    resolved = url.replace(/^\/api/, getApiBaseUrl())
+  }
   const headers = new Headers(options.headers || {})
   headers.set('Authorization', `Bearer ${authToken.value}`)
-  return fetch(url, { ...options, headers })
+  return fetch(resolved, { ...options, headers })
 }
 
 // ログイン処理
@@ -141,7 +152,7 @@ const handleLogin = async () => {
   authError.value = ''
 
   try {
-    const res = await fetch('/api/admin/auth', {
+    const res = await fetch(`${getApiBaseUrl()}/admin/auth`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ password: password.value }),
@@ -198,7 +209,7 @@ const checkStoredAuth = async () => {
 
   // サーバー側でトークン検証
   try {
-    const res = await fetch('/api/admin/verify', {
+    const res = await fetch(`${getApiBaseUrl()}/admin/verify`, {
       headers: { Authorization: `Bearer ${storedToken}` },
     })
     const data = await res.json()
