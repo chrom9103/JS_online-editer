@@ -25,14 +25,14 @@ func main() {
 	})
 
 	// コード実行エンドポイント
-	r.POST("/api/execute", handlers.ExecuteCode)
+	r.POST("/execute", handlers.ExecuteCode)
 
 	// 管理用認証API
-	r.POST("/api/admin/auth", handlers.AdminAuth)
-	r.GET("/api/admin/verify", handlers.AdminVerifyToken)
+	r.POST("/admin/auth", handlers.AdminAuth)
+	r.GET("/admin/verify", handlers.AdminVerifyToken)
 
 	// 管理用API: runs一覧とファイル取得（認証必須）
-	adminAPI := r.Group("/api")
+	adminAPI := r.Group("/")
 	adminAPI.Use(handlers.AdminAuthMiddleware())
 	{
 		adminAPI.GET("/runs", handlers.ListRuns)
