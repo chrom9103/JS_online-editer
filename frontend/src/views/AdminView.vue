@@ -39,6 +39,7 @@
           <table v-else>
             <thead>
               <tr>
+                <th class="col-num">#</th>
                 <th>File Name</th>
                 <th>Size</th>
                 <th>Modified</th>
@@ -46,11 +47,12 @@
             </thead>
             <tbody>
               <tr
-                v-for="run in runs"
+                v-for="(run, idx) in runs"
                 :key="run.name"
                 :class="{ active: selectedRun?.name === run.name }"
                 @click="selectRun(run)"
               >
+                <td class="line-num">{{ idx + 1 }}</td>
                 <td>{{ run.name }}</td>
                 <td>{{ formatSize(run.size) }}</td>
                 <td>{{ formatDate(run.modTime) }}</td>
@@ -430,8 +432,9 @@ onUnmounted(() => {
 .file-list-panel {
   width: 30%;
   border-right: 1px solid #333;
-  overflow-y: auto;
+  overflow: auto;
   background-color: #1e1e1e;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, 'Roboto Mono', 'Courier New', monospace;
 }
 
 .loading,
@@ -447,9 +450,10 @@ onUnmounted(() => {
 }
 
 table {
-  width: 100%;
+  width: max-content;
   border-collapse: collapse;
   font-size: 12px;
+  table-layout: auto;
 }
 
 thead {
@@ -464,6 +468,15 @@ td {
   padding: 10px 12px;
   text-align: left;
   border-bottom: 1px solid #333;
+  white-space: nowrap;
+}
+
+.col-num,
+.line-num {
+  width: 40px;
+  text-align: right;
+  padding-right: 16px;
+  color: #888;
 }
 
 th {
