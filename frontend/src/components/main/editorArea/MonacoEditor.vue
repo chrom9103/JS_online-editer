@@ -23,10 +23,16 @@ self.MonacoEnvironment = {
   baseUrl: import.meta.env.BASE_URL,
 }
 
-const props = defineProps<{
-  content: string
-  height: number
-}>()
+const props = withDefaults(
+  defineProps<{
+    content: string
+    height: number
+    readOnly?: boolean
+  }>(),
+  {
+    readOnly: false,
+  },
+)
 
 const emit = defineEmits<{
   (e: 'update-content', content: string): void
@@ -43,6 +49,7 @@ onMounted(() => {
     language: 'javascript',
     theme: 'vs-dark',
     automaticLayout: true,
+    readOnly: props.readOnly,
   })
 
   monacoEditor.onDidChangeModelContent(() => {
