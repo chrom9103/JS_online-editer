@@ -428,7 +428,7 @@ onUnmounted(() => {
 
 /* Left Panel - File List */
 .file-list-panel {
-  width: 50%;
+  width: 30%;
   border-right: 1px solid #333;
   overflow-y: auto;
   background-color: #1e1e1e;
@@ -489,7 +489,7 @@ tbody tr.active {
 
 /* Right Panel - Editor */
 .editor-panel {
-  width: 50%;
+  width: 70%;
   display: flex;
   flex-direction: column;
   background-color: #1e1e1e;
