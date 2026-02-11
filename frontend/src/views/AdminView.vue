@@ -40,7 +40,6 @@
             <table ref="tableEl">
               <thead>
                 <tr>
-                  <th class="col-num">#</th>
                   <th>File Name</th>
                   <th>Size</th>
                   <th>Modified</th>
@@ -53,7 +52,6 @@
                   :class="{ active: selectedRun?.name === run.name }"
                   @click="selectRun(run)"
                 >
-                  <td class="line-num">{{ idx + 1 }}</td>
                   <td>{{ run.name }}</td>
                   <td>{{ formatSize(run.size) }}</td>
                   <td>{{ formatDate(run.modTime) }}</td>
