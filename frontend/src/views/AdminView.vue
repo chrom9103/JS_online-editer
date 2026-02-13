@@ -29,6 +29,11 @@
             class="delete-btn"
             :disabled="checkedCount === 0 || isDeleting"
             @click="confirmDelete"
+            :style="{
+              backgroundColor: '#d32f2f',
+              color: '#ffffff',
+              opacity: checkedCount === 0 || isDeleting ? 0.4 : 1,
+            }"
           >
             {{ isDeleting ? 'Deleting...' : `Delete (${checkedCount})` }}
           </button>
@@ -564,10 +569,9 @@ onUnmounted(() => {
   border-radius: 4px;
   cursor: pointer;
   font-size: 13px;
-  transition: background-color 0.2s;
-  position: relative;
-  z-index: 10;
-  overflow: visible;
+  transition:
+    background-color 0.2s,
+    opacity 0.2s;
 }
 
 .delete-btn:hover:not(:disabled) {
@@ -578,6 +582,7 @@ onUnmounted(() => {
   opacity: 0.4;
   cursor: not-allowed;
   color: #ffffff;
+  background-color: #d32f2f;
 }
 
 .refresh-btn {
