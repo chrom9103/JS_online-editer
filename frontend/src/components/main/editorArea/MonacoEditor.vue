@@ -50,6 +50,7 @@ onMounted(() => {
     theme: 'vs-dark',
     automaticLayout: true,
     readOnly: props.readOnly,
+    overflowWidgetsDomNode: editorContainer.value,
   })
 
   monacoEditor.onDidChangeModelContent(() => {

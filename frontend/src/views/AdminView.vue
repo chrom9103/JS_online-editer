@@ -25,6 +25,13 @@
       <header class="admin-header">
         <h1>Admin - Runs</h1>
         <div class="header-actions">
+          <button
+            class="delete-btn"
+            :disabled="checkedCount === 0 || isDeleting"
+            @click="confirmDelete"
+          >
+            {{ isDeleting ? 'Deleting...' : `Delete (${checkedCount})` }}
+          </button>
           <button class="refresh-btn" @click="fetchRuns">Refresh</button>
           <button class="logout-btn" @click="handleLogout">Logout</button>
         </div>
@@ -40,6 +47,14 @@
             <table ref="tableEl">
               <thead>
                 <tr>
+                  <th class="col-check">
+                    <input
+                      type="checkbox"
+                      :checked="isAllChecked"
+                      :indeterminate="isIndeterminate"
+                      @change="toggleAllChecked"
+                    />
+                  </th>
                   <th>File Name</th>
                   <th>Size</th>
                   <th>Modified</th>
@@ -52,6 +67,13 @@
                   :class="{ active: selectedRun?.name === run.name }"
                   @click="selectRun(run)"
                 >
+                  <td class="col-check" @click.stop>
+                    <input
+                      type="checkbox"
+                      :checked="checkedFiles.has(run.name)"
+                      @change="toggleCheck(run.name)"
+                    />
+                  </td>
                   <td>{{ run.name }}</td>
                   <td>{{ formatSize(run.size) }}</td>
                   <td>{{ formatDate(run.modTime) }}</td>
@@ -89,7 +111,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import MonacoEditor from '../components/main/editorArea/MonacoEditor.vue'
 
 // API base helper (matches EditorArea approach)
@@ -121,6 +143,81 @@ const error = ref('')
 const selectedRun = ref<RunFile | null>(null)
 const selectedRunContent = ref('')
 const editorHeight = ref(600)
+
+// ファイル削除用の状態
+const checkedFiles = ref<Set<string>>(new Set())
+const isDeleting = ref(false)
+
+const checkedCount = computed(() => checkedFiles.value.size)
+const isAllChecked = computed(
+  () => runs.value.length > 0 && checkedFiles.value.size === runs.value.length,
+)
+const isIndeterminate = computed(
+  () => checkedFiles.value.size > 0 && checkedFiles.value.size < runs.value.length,
+)
+
+const toggleCheck = (name: string) => {
+  const next = new Set(checkedFiles.value)
+  if (next.has(name)) {
+    next.delete(name)
+  } else {
+    next.add(name)
+  }
+  checkedFiles.value = next
+}
+
+const toggleAllChecked = () => {
+  if (isAllChecked.value) {
+    checkedFiles.value = new Set()
+  } else {
+    checkedFiles.value = new Set(runs.value.map((r) => r.name))
+  }
+}
+
+const confirmDelete = async () => {
+  const count = checkedFiles.value.size
+  if (count === 0) return
+  if (
+    !window.confirm(
+      `${count} 件のファイルを削除します。この操作は取り消せません。\nよろしいですか？`,
+    )
+  )
+    return
+  await deleteFiles()
+}
+
+const deleteFiles = async () => {
+  isDeleting.value = true
+  try {
+    const files = Array.from(checkedFiles.value)
+    const res = await authFetch('/api/runs/delete', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ files }),
+    })
+    if (res.status === 401) {
+      handleLogout()
+      return
+    }
+    if (!res.ok) throw new Error(`HTTP ${res.status}`)
+    const data = await res.json()
+    // 削除されたファイルが現在選択中の場合はクリア
+    if (selectedRun.value && files.includes(selectedRun.value.name)) {
+      selectedRun.value = null
+      selectedRunContent.value = ''
+    }
+    checkedFiles.value = new Set()
+    // リストを再取得
+    await fetchRuns()
+    if (data.errors && data.errors.length > 0) {
+      error.value = `${data.deleted?.length || 0} files deleted, ${data.errors.length} failed`
+    }
+  } catch (e: any) {
+    error.value = `Failed to delete files: ${e.message}`
+  } finally {
+    isDeleting.value = false
+  }
+}
 const tableScroll = ref<HTMLElement | null>(null)
 const tableEl = ref<HTMLElement | null>(null)
 const globalScroll = ref<HTMLElement | null>(null)
@@ -444,6 +541,8 @@ onUnmounted(() => {
   background-color: #252526;
   border-bottom: 1px solid #000;
   flex-shrink: 0;
+  position: relative;
+  z-index: 100;
 }
 
 .admin-header h1 {
@@ -455,6 +554,30 @@ onUnmounted(() => {
 .header-actions {
   display: flex;
   gap: 10px;
+}
+
+.delete-btn {
+  background-color: #d32f2f;
+  color: #ffffff;
+  border: none;
+  padding: 6px 14px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 13px;
+  transition: background-color 0.2s;
+  position: relative;
+  z-index: 10;
+  overflow: visible;
+}
+
+.delete-btn:hover:not(:disabled) {
+  background-color: #b71c1c;
+}
+
+.delete-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  color: #ffffff;
 }
 
 .refresh-btn {
@@ -556,11 +679,26 @@ td {
 }
 
 .col-num,
+.col-check,
 .line-num {
   width: 40px;
   text-align: right;
   padding-right: 16px;
   color: #888;
+}
+
+.col-check {
+  width: 32px;
+  text-align: center;
+  padding-right: 8px;
+  padding-left: 8px;
+}
+
+.col-check input[type='checkbox'] {
+  cursor: pointer;
+  width: 15px;
+  height: 15px;
+  accent-color: #007acc;
 }
 
 th {
@@ -620,5 +758,7 @@ tbody tr.active {
 .editor-wrapper {
   flex: 1;
   overflow: hidden;
+  position: relative;
+  z-index: 0;
 }
 </style>

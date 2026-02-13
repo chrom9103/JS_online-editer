@@ -15,7 +15,7 @@ func main() {
 	// CORS設定
 	config := cors.DefaultConfig()
 	config.AllowOrigins = []string{"*"}
-	config.AllowMethods = []string{"GET", "POST", "OPTIONS"}
+	config.AllowMethods = []string{"GET", "POST", "DELETE", "OPTIONS"}
 	config.AllowHeaders = []string{"Origin", "Content-Type", "Accept", "Authorization"}
 	r.Use(cors.New(config))
 
@@ -37,6 +37,7 @@ func main() {
 	{
 		adminAPI.GET("/runs", handlers.ListRuns)
 		adminAPI.GET("/runs/:name", handlers.GetRunFile)
+		adminAPI.POST("/runs/delete", handlers.DeleteRunFiles)
 	}
 
 	port := os.Getenv("PORT")
