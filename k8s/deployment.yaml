@@ -14,7 +14,7 @@ spec:
     spec:
       containers:
       - name: frontend-container
-        image: online-editer-frontend:v0.0.3
+        image: online-editer-frontend:v0.0.5
         imagePullPolicy: Never
         ports:
         - containerPort: 8080
@@ -56,7 +56,7 @@ spec:
 
       containers:
       - name: backend-container
-        image: online-editer-backend:v0.0.3
+        image: online-editer-backend:v0.0.5
         imagePullPolicy: Never
         workingDir: /app
         ports:
@@ -116,7 +116,7 @@ spec:
     spec:
       containers:
       - name: sandbox-container
-        image: online-editer-sandbox:v0.0.3
+        image: online-editer-sandbox:v0.0.5
         imagePullPolicy: Never
         ports:
         - containerPort: 3000

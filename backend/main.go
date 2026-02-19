@@ -36,8 +36,8 @@ func main() {
 	adminAPI.Use(handlers.AdminAuthMiddleware())
 	{
 		adminAPI.GET("/runs", handlers.ListRuns)
-		adminAPI.GET("/runs/:name", handlers.GetRunFile)
 		adminAPI.POST("/runs/delete", handlers.DeleteRunFiles)
+		adminAPI.GET("/runs/:name", handlers.GetRunFile)
 	}
 
 	port := os.Getenv("PORT")
@@ -46,6 +46,10 @@ func main() {
 	}
 
 	log.Printf("Backend server starting on port %s", port)
+	for _, ri := range r.Routes() {
+		log.Printf("ROUTE: %s %s", ri.Method, ri.Path)
+	}
+
 	if err := r.Run(":" + port); err != nil {
 		log.Fatalf("Failed to start server: %v", err)
 	}
