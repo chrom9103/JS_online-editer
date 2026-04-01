@@ -114,6 +114,10 @@ spec:
       labels:
         app: sandbox
     spec:
+      automountServiceAccountToken: false
+      securityContext:
+        seccompProfile:
+          type: RuntimeDefault
       containers:
       - name: sandbox-container
         image: online-editer-sandbox:v0.0.5
