@@ -1,4 +1,4 @@
-const ivm = require('isolated-vm');
+const ivm = require("isolated-vm");
 
 // メモリ制限: 128MB
 const MEMORY_LIMIT_MB = 128;
@@ -7,62 +7,71 @@ const MEMORY_LIMIT_MB = 128;
 const MAX_OUTPUT_ITEMS = 100;
 const MAX_OUTPUT_CHARS = 64 * 1024; // 64KB
 const MAX_PER_ITEM_CHARS = 8 * 1024; // 8KB
-const TRUNC_MSG = '... (truncated)';
+const TRUNC_MSG = "... (truncated)";
 
 function truncateString(s, max) {
   try {
-    if (typeof s !== 'string') s = String(s);
+    if (typeof s !== "string") s = String(s);
     if (s.length <= max) return s;
     return s.slice(0, max) + TRUNC_MSG;
   } catch {
-    return '[Unserializable]';
+    return "[Unserializable]";
   }
 }
 
 function safeSerializeShallow(v) {
   try {
-    if (v === null) return 'null';
-    if (v === undefined) return 'undefined';
+    if (v === null) return "null";
+    if (v === undefined) return "undefined";
     const t = typeof v;
-    if (t === 'string') return v.length > 200 ? v.slice(0, 200) + '...' : v;
-    if (t === 'number' || t === 'boolean' || t === 'bigint') return String(v);
-    if (t === 'function') return '[Function]';
+    if (t === "string") return v.length > 200 ? v.slice(0, 200) + "..." : v;
+    if (t === "number" || t === "boolean" || t === "bigint") return String(v);
+    if (t === "function") return "[Function]";
     if (Array.isArray(v)) return `[Array(${v.length})]`;
-    if (t === 'object') {
+    if (t === "object") {
       try {
         const keys = Object.keys(v);
-        const entries = keys.slice(0, 5).map(k => `${k}:${safeSerializeShallow(v[k])}`).join(', ');
-        return `{${entries}${keys.length > 5 ? ',...' : ''}}`;
+        const entries = keys
+          .slice(0, 5)
+          .map((k) => `${k}:${safeSerializeShallow(v[k])}`)
+          .join(", ");
+        return `{${entries}${keys.length > 5 ? ",..." : ""}}`;
       } catch {
-        return '[Object]';
+        return "[Object]";
       }
     }
     return String(v);
   } catch {
-    return '[Unserializable]';
+    return "[Unserializable]";
   }
 }
 
 function safeSerialize(value) {
   try {
-    if (value === null) return 'null';
-    if (value === undefined) return 'undefined';
+    if (value === null) return "null";
+    if (value === undefined) return "undefined";
     const t = typeof value;
-    if (t === 'string') return truncateString(value, MAX_PER_ITEM_CHARS);
-    if (t === 'number' || t === 'boolean' || t === 'bigint') return String(value);
-    if (t === 'function') return '[Function]';
+    if (t === "string") return truncateString(value, MAX_PER_ITEM_CHARS);
+    if (t === "number" || t === "boolean" || t === "bigint") return String(value);
+    if (t === "function") return "[Function]";
     if (Array.isArray(value)) {
-      const preview = value.slice(0, 5).map(v => safeSerializeShallow(v)).join(', ');
+      const preview = value
+        .slice(0, 5)
+        .map((v) => safeSerializeShallow(v))
+        .join(", ");
       return truncateString(`[Array(${value.length})] ${preview}`, MAX_PER_ITEM_CHARS);
     }
-    if (t === 'object') {
+    if (t === "object") {
       const keys = Object.keys(value || {});
-      const entries = keys.slice(0, 5).map(k => `${k}:${safeSerializeShallow(value[k])}`).join(', ');
-      return truncateString(`{${entries}${keys.length > 5 ? ',...' : ''}}`, MAX_PER_ITEM_CHARS);
+      const entries = keys
+        .slice(0, 5)
+        .map((k) => `${k}:${safeSerializeShallow(value[k])}`)
+        .join(", ");
+      return truncateString(`{${entries}${keys.length > 5 ? ",..." : ""}}`, MAX_PER_ITEM_CHARS);
     }
     return truncateString(String(value), MAX_PER_ITEM_CHARS);
   } catch {
-    return '[Unserializable]';
+    return "[Unserializable]";
   }
 }
 
@@ -83,18 +92,18 @@ async function executeCode(code, timeout = 10000) {
   try {
     isolate = new ivm.Isolate({ memoryLimit: MEMORY_LIMIT_MB });
     console.log(`[Sandbox] Isolate created (memory limit: ${MEMORY_LIMIT_MB}MB)`);
-    
+
     context = await isolate.createContext();
-    
+
     const jail = context.global;
-    
-    await jail.set('global', jail.derefInto());
+
+    await jail.set("global", jail.derefInto());
 
     // console.log（軽量化・切り捨てを行う）
     function pushOutput(item) {
       try {
         if (output.length >= MAX_OUTPUT_ITEMS) return;
-        const text = item && item.text ? String(item.text) : '';
+        const text = item && item.text ? String(item.text) : "";
         const truncated = truncateString(text, MAX_PER_ITEM_CHARS);
         const newChars = outputChars + truncated.length;
         if (newChars > MAX_OUTPUT_CHARS) {
@@ -115,25 +124,35 @@ async function executeCode(code, timeout = 10000) {
 
     const logCallback = new ivm.Callback((...args) => {
       try {
-        const parts = args.map(arg => {
+        const parts = args.map((arg) => {
           try {
-            if (arg && typeof arg === 'object') return safeSerialize(arg);
+            if (arg && typeof arg === "object") return safeSerialize(arg);
           } catch {}
-          try { return String(arg); } catch { return '[Unserializable]'; }
+          try {
+            return String(arg);
+          } catch {
+            return "[Unserializable]";
+          }
         });
-        pushOutput({ type: 'log', text: parts.join(' ') });
+        pushOutput({ type: "log", text: parts.join(" ") });
       } catch {
-        pushOutput({ type: 'error', text: 'log callback error' });
+        pushOutput({ type: "error", text: "log callback error" });
       }
     });
 
     const errorCallback = new ivm.Callback((...args) => {
       try {
-        const parts = args.map(arg => {
-          try { if (arg && typeof arg === 'object') return safeSerialize(arg); } catch {}
-          try { return String(arg); } catch { return '[Unserializable]'; }
+        const parts = args.map((arg) => {
+          try {
+            if (arg && typeof arg === "object") return safeSerialize(arg);
+          } catch {}
+          try {
+            return String(arg);
+          } catch {
+            return "[Unserializable]";
+          }
         });
-        pushOutput({ type: 'error', text: parts.join(' ') });
+        pushOutput({ type: "error", text: parts.join(" ") });
       } catch {
         // ignore
       }
@@ -141,29 +160,41 @@ async function executeCode(code, timeout = 10000) {
 
     const warnCallback = new ivm.Callback((...args) => {
       try {
-        const parts = args.map(arg => {
-          try { if (arg && typeof arg === 'object') return safeSerialize(arg); } catch {}
-          try { return String(arg); } catch { return '[Unserializable]'; }
+        const parts = args.map((arg) => {
+          try {
+            if (arg && typeof arg === "object") return safeSerialize(arg);
+          } catch {}
+          try {
+            return String(arg);
+          } catch {
+            return "[Unserializable]";
+          }
         });
-        pushOutput({ type: 'warn', text: parts.join(' ') });
+        pushOutput({ type: "warn", text: parts.join(" ") });
       } catch {}
     });
 
     const infoCallback = new ivm.Callback((...args) => {
       try {
-        const parts = args.map(arg => {
-          try { if (arg && typeof arg === 'object') return safeSerialize(arg); } catch {}
-          try { return String(arg); } catch { return '[Unserializable]'; }
+        const parts = args.map((arg) => {
+          try {
+            if (arg && typeof arg === "object") return safeSerialize(arg);
+          } catch {}
+          try {
+            return String(arg);
+          } catch {
+            return "[Unserializable]";
+          }
         });
-        pushOutput({ type: 'info', text: parts.join(' ') });
+        pushOutput({ type: "info", text: parts.join(" ") });
       } catch {}
     });
 
     // consoleオブジェクトを設定
-    await jail.set('_log', logCallback);
-    await jail.set('_error', errorCallback);
-    await jail.set('_warn', warnCallback);
-    await jail.set('_info', infoCallback);
+    await jail.set("_log", logCallback);
+    await jail.set("_error", errorCallback);
+    await jail.set("_warn", warnCallback);
+    await jail.set("_info", infoCallback);
 
     // consoleオブジェクトを作成するブートストラップコード
     const bootstrap = `
@@ -194,35 +225,33 @@ async function executeCode(code, timeout = 10000) {
     // 結果があれば出力に追加（安全にシリアライズ）
     if (result !== undefined) {
       const resultText = safeSerialize(result);
-      pushOutput({ type: 'result', text: `=> ${resultText}` });
+      pushOutput({ type: "result", text: `=> ${resultText}` });
     }
 
     return {
       success: true,
-      output
+      output,
     };
-
   } catch (error) {
-    let errorMessage = error.message || 'Unknown error';
-    
+    let errorMessage = error.message || "Unknown error";
+
     // タイムアウトエラーの判定
-    if (errorMessage.includes('Script execution timed out')) {
+    if (errorMessage.includes("Script execution timed out")) {
       errorMessage = `Execution timed out (limit: ${timeout}ms)`;
     }
-    
+
     // メモリ制限エラーの判定
-    if (errorMessage.includes('Isolate was disposed')) {
+    if (errorMessage.includes("Isolate was disposed")) {
       errorMessage = `Memory limit exceeded (limit: ${MEMORY_LIMIT_MB}MB)`;
     }
 
-    pushOutput({ type: 'error', text: `Error: ${errorMessage}` });
+    pushOutput({ type: "error", text: `Error: ${errorMessage}` });
 
     return {
       success: false,
       output,
-      error: errorMessage
+      error: errorMessage,
     };
-
   } finally {
     if (context) {
       context.release();
