@@ -51,6 +51,7 @@ onMounted(() => {
     automaticLayout: true,
     readOnly: props.readOnly,
     overflowWidgetsDomNode: editorContainer.value,
+    hover: { enabled: false },
   })
 
   monacoEditor.onDidChangeModelContent(() => {
