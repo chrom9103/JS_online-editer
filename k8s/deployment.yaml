@@ -129,10 +129,10 @@ spec:
               value: "3000"
           resources:
             requests:
-              cpu: "200m"
-              memory: "128Mi"
+              cpu: "50m"
+              memory: "64Mi"
             limits:
-              cpu: "500m"
+              cpu: "300m"
               memory: "256Mi"
           securityContext:
             readOnlyRootFilesystem: true
