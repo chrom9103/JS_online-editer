@@ -28,4 +28,4 @@ spec:
   tls:
     - hosts:
         - www.chrom.jp
-      secretName: online-editer-secret
+      secretName: chrom-jp-tls  # cert-manager が管理（chrom9103/k8s-certs）
